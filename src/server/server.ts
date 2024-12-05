@@ -367,6 +367,19 @@ app.post('/api/firebase/emulators', errorHandler(async (req, res) => {
           message,
           level: 'info'
         }));
+
+        // Check for successful emulator start
+        if (message.includes('All emulators ready!')) {
+          wsClient.send(JSON.stringify({
+            type: 'complete',
+            message: 'Emulators started successfully'
+          }));
+        } else if (message.includes('Shutting down emulators.')) {
+          wsClient.send(JSON.stringify({
+            type: 'complete',
+            message: 'Emulators stopped successfully'
+          }));
+        }
       }
     });
 

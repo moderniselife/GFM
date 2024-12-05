@@ -3,12 +3,12 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 interface LogEntry {
   timestamp: Date;
   message: string;
-  type: 'info' | 'error' | 'success';
+  level?: 'info' | 'error' | 'success' | 'warning';
 }
 
 interface LogsContextType {
   logs: LogEntry[];
-  addLog: (message: string, type?: 'info' | 'error' | 'success') => void;
+  addLog: (message: string, level?: 'info' | 'error' | 'success' | 'warning') => void;
   clearLogs: () => void;
 }
 
@@ -17,8 +17,12 @@ const LogsContext = createContext<LogsContextType | undefined>(undefined);
 export function LogsProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
-  const addLog = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
-    setLogs(prev => [...prev, { timestamp: new Date(), message, type }]);
+  const addLog = (message: string, level: 'info' | 'error' | 'success' | 'warning' = 'info') => {
+    setLogs(prev => [...prev, { 
+      timestamp: new Date(),
+      message,
+      level
+    }]);
   };
 
   const clearLogs = () => setLogs([]);

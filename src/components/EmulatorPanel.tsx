@@ -48,8 +48,14 @@ export function EmulatorPanel() {
                 switch (data.type) {
                     case 'log':
                         addLog(data.message, data.level);
-                        // If no emulators were running, stop loading
-                        if (data.message === 'No emulators were running' || data.message === 'Emulators are already running' || data.message === 'Emulators stopped successfully') {
+                        // Update the condition to check for emulator ready message
+                        if (
+                            data.message === 'No emulators were running' ||
+                            data.message === 'Emulators are already running' ||
+                            data.message === 'Emulators stopped successfully' ||
+                            data.message.includes('All emulators ready!') ||
+                            data.message.includes('Shutting down emulators.')
+                        ) {
                             setLoading(false);
                         }
                         break;

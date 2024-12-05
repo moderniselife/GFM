@@ -1,0 +1,23 @@
+.resize-handle:hover {
+  background-color: #cbd5e0 !important;
+}
+
+.resize-handle:active {
+  background-color: #4299e1 !important;
+}
+
+[data-panel-group-direction="vertical"] > [data-panel-resize-handle] {
+  height: 4px;
+  background-color: #E2E8F0;
+  cursor: row-resize;
+  transition: background-color 0.2s;
+  margin: 4px 0;
+}
+
+[data-panel-group-direction="vertical"] > [data-panel-resize-handle]:hover {
+  background-color: #CBD5E0;
+}
+
+[data-panel-group-direction="vertical"] > [data-panel-resize-handle][data-panel-resize-handle-active] {
+  background-color: #4299E1;
+}
