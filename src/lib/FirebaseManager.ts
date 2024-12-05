@@ -307,6 +307,15 @@ class FirebaseManager {
       throw error;
     }
   }
+
+  public async checkRunningEmulators(): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/firebase/running-emulators`);
+    if (!response.ok) {
+      throw new Error('Failed to check running emulators');
+    }
+    const { runningEmulators } = await response.json();
+    return runningEmulators;
+  }
 }
 
 export default FirebaseManager;

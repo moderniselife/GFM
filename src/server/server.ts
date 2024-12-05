@@ -1,7 +1,7 @@
 import express from 'express';
 import { execSync, spawn } from 'child_process';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import cors from 'cors';
 import Server from "ws";
 import http from 'http';
@@ -461,6 +461,77 @@ app.post('/api/secrets/fetch', errorHandler(async (req, res) => {
     console.error('Error fetching secrets:', error);
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Failed to fetch secrets'
+    });
+  }
+}));
+
+// Add this new endpoint
+app.get('/api/firebase/running-emulators', errorHandler(async (req, res) => {
+  try {
+    // Use ps command to find running emulator processes
+    const psOutput = execCommand('ps aux | grep "firebase emulators"');
+    const lines = psOutput.split('\n');
+    
+    // Extract running emulators from the command line
+    const runningEmulators = new Set<string>();
+    
+    lines.forEach(line => {
+      if (line.includes('--only')) {
+        const match = line.match(/--only\s+([^\s]+)/);
+        if (match) {
+          const emulators = match[1].split(',');
+          emulators.forEach(emulator => {
+            // Handle the special case of hosting:projectId
+            if (emulator.startsWith('hosting:')) {
+              runningEmulators.add('hosting');
+            } else {
+              runningEmulators.add(emulator);
+            }
+          });
+        }
+      }
+    });
+
+    res.json({ runningEmulators: Array.from(runningEmulators) });
+  } catch (error) {
+    // If the grep returns nothing, it means no emulators are running
+    res.json({ runningEmulators: [] });
+  }
+}));
+
+// Add this new endpoint for custom secrets
+app.post('/api/secrets/fetch-custom', errorHandler(async (req, res) => {
+  try {
+    const { projectDir, secretKey, targetPath, projectId } = req.body;
+    const client = new SecretManagerServiceClient();
+
+    // Construct the secret name
+    const secretName = `projects/${projectId}/secrets/${secretKey}/versions/latest`;
+
+    // Access the secret
+    const [version] = await client.accessSecretVersion({
+      name: secretName,
+    });
+
+    const secretValue = version.payload.data.toString();
+
+    // Determine the full file path
+    const filePath = join(projectDir, targetPath);
+
+    // Ensure the directory exists
+    await fs.mkdir(dirname(filePath), { recursive: true });
+
+    // Write the secret to the file
+    await fs.writeFile(filePath, secretValue);
+
+    res.json({
+      success: true,
+      filePath: targetPath
+    });
+  } catch (error) {
+    console.error('Error fetching custom secret:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch custom secret'
     });
   }
 }));

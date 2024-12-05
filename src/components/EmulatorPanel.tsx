@@ -3,7 +3,7 @@ import { Button } from "@chakra-ui/button";
 import { CheckboxGroup, Checkbox, Wrap, WrapItem } from "@chakra-ui/react";
 import { HStack } from "@chakra-ui/layout";
 import { useToast } from "@chakra-ui/toast";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import FirebaseManager from "../lib/FirebaseManager";
 import { useProject } from '../contexts/ProjectContext';
 import { useLogs } from '../contexts/LogsContext';
@@ -16,6 +16,25 @@ export function EmulatorPanel() {
     const { addLog } = useLogs();
 
     const manager = useMemo(() => new FirebaseManager(projectDir, addLog), [projectDir, addLog]);
+
+    const checkRunningEmulators = useCallback(async () => {
+        try {
+            const response = await fetch(`http://localhost:3001/api/firebase/running-emulators`);
+            if (!response.ok) {
+                throw new Error('Failed to check running emulators');
+            }
+            const { runningEmulators } = await response.json();
+            setServices(runningEmulators);
+        } catch (error) {
+            console.error('Failed to check running emulators:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (projectDir) {
+            checkRunningEmulators();
+        }
+    }, [projectDir, checkRunningEmulators]);
 
     const handleEmulatorAction = async (action: "start" | "stop" | "restart") => {
         if (!projectDir) {
@@ -62,6 +81,7 @@ export function EmulatorPanel() {
                     case 'complete':
                         addLog(data.message, 'success');
                         setLoading(false);
+                        checkRunningEmulators();
                         break;
                     case 'error':
                         addLog(data.message, 'error');
