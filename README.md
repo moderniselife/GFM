@@ -1,4 +1,4 @@
-# Firebase Manager
+# GFM - Golden Firebase Manager
 
 A desktop application built with React and Electron for managing Firebase projects, deployments, emulators, and secrets. This tool provides a user-friendly interface for common Firebase development tasks.
 
@@ -20,7 +20,7 @@ A desktop application built with React and Electron for managing Firebase projec
 - Firebase CLI installed globally (`npm install -g firebase-tools`)
 - Firebase project already initialized
 - Google Cloud credentials configured
-- 
+-
 - 1. Clone the repository:
 
 ```bash
@@ -33,6 +33,7 @@ A desktop application built with React and Electron for managing Firebase projec
    ```bash
    bun install
    ```
+
 3. Start the development server:
 
    ```bash
