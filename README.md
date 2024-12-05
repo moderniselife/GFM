@@ -20,22 +20,19 @@ A desktop application built with React and Electron for managing Firebase projec
 - Firebase CLI installed globally (`npm install -g firebase-tools`)
 - Firebase project already initialized
 - Google Cloud credentials configured
+- 
+- 1. Clone the repository:
 
-## Installation
-
-1. Clone the repository:
-
-   ```bash
+```bash
    git clone https://github.com/moderniselife/GFM.git
    cd GFM
-   ```
+```
 
 2. Install dependencies:
 
    ```bash
    bun install
    ```
-
 3. Start the development server:
 
    ```bash
