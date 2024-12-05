@@ -31,7 +31,7 @@ export function EmulatorPanel() {
         setLoading(true);
 
         // Create WebSocket connection
-        const ws = new WebSocket('ws://localhost:3001/api/firebase/deploy-logs');
+        const ws = new WebSocket('ws://localhost:3001/api/gfm/logs');
         const clientId = Math.random().toString(36).substring(7);
 
         // Wait for WebSocket connection to be established

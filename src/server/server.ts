@@ -10,7 +10,7 @@ import { promises as fs } from 'fs';
 
 const app = express();
 const server = http.createServer(app);
-const wss = new Server.WebSocketServer({ server, path: '/api/firebase/deploy-logs' });
+const wss = new Server.WebSocketServer({ server, path: '/api/gfm/logs' });
 const port = 3001;
 
 app.use(cors());
@@ -423,31 +423,31 @@ app.post('/api/secrets/fetch', errorHandler(async (req, res) => {
   try {
     const { projectDir, environment, projectId } = req.body;
     const client = new SecretManagerServiceClient();
-    
+
     // Construct the secret name based on environment
     const secretName = `projects/${projectId}/secrets/${environment}-env/versions/latest`;
-    
+
     // Access the secret
     const [version] = await client.accessSecretVersion({
       name: secretName,
     });
 
     const secretValue = version.payload.data.toString();
-    
+
     // Determine the file path based on environment
     const filePath = join(projectDir, `.env.${environment}`);
-    
+
     // Write the secret to a file
     await fs.writeFile(filePath, secretValue);
 
-    res.json({ 
+    res.json({
       success: true,
-      filePath: `.env.${environment}` 
+      filePath: `.env.${environment}`
     });
   } catch (error) {
     console.error('Error fetching secrets:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to fetch secrets' 
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch secrets'
     });
   }
 }));

@@ -79,7 +79,7 @@ class FirebaseManager {
 
     try {
       const wsUrl = this.baseUrl.replace('http', 'ws');
-      ws = new WebSocket(`${wsUrl}/firebase/deploy-logs`);
+      ws = new WebSocket(`${wsUrl}/gfm/logs`);
       const clientId = Math.random().toString(36).substring(7);
 
       // Set up WebSocket message handler
@@ -157,7 +157,7 @@ class FirebaseManager {
       }
 
       const wsUrl = this.baseUrl.replace('http', 'ws');
-      ws = new WebSocket(`${wsUrl}/firebase/deploy-logs`);
+      ws = new WebSocket(`${wsUrl}/gfm/logs`);
       const clientId = Math.random().toString(36).substring(7);
 
       // Set up abort handler

@@ -124,7 +124,7 @@ The application runs a local server on port 3001 with the following endpoints:
 
 Real-time updates are handled through WebSocket connections:
 
-- Endpoint: `ws://localhost:3001/api/firebase/deploy-logs`
+- Endpoint: `ws://localhost:3001/api/gfm/logs`
 - Provides real-time feedback for:
   - Deployments
   - Emulator status
