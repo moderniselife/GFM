@@ -16,8 +16,7 @@ A desktop application built with React and Electron for managing Firebase projec
 
 ## Prerequisites
 
-- Node.js 16.x or higher
-- npm or yarn
+- Bun by oven.sh - [Link](https://bun.sh/)
 - Firebase CLI installed globally (`npm install -g firebase-tools`)
 - Firebase project already initialized
 - Google Cloud credentials configured
@@ -27,20 +26,20 @@ A desktop application built with React and Electron for managing Firebase projec
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/firebase-manager.git
-   cd firebase-manager
+   git clone https://github.com/moderniselife/GFM.git
+   cd GFM
    ```
 
 2. Install dependencies:
 
    ```bash
-   npm install
+   bun install
    ```
 
 3. Start the development server:
 
    ```bash
-   npm run dev
+   bun run start
    ```
 
 ## Usage
