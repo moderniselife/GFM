@@ -3,7 +3,7 @@ import { ExternalLinkIcon } from '@chakra-ui/icons';
 import { useState, useEffect } from "react";
 import { Panel } from "./Panel";
 
-export function GoogleAuthStatus() {
+export function GoogleAuthStatusPanel() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [isADCConfigured, setIsADCConfigured] = useState<boolean>(false);
     const [checking, setChecking] = useState(true);
@@ -116,7 +116,7 @@ export function GoogleAuthStatus() {
     }
 
     return (
-        <Panel title="Authentication Status" noShadow noBorder>
+        <Panel title="Authentication Status">
             <VStack spacing={4} align="stretch">
                 <Box>
                     <VStack spacing={3} align="stretch">

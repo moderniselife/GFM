@@ -8,7 +8,6 @@ import { useDropzone } from 'react-dropzone';
 import FirebaseManager from "../lib/FirebaseManager";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
-import { GoogleAuthStatus } from './GoogleAuthStatus';
 import { CheckIcon, SearchIcon, WarningIcon, RepeatIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import { Panel } from './Panel';
 interface SecretConfig {
@@ -487,10 +486,6 @@ export function SecretsPanel() {
 
     return (
         <Panel title="Secrets Manager">
-
-            <Box mb={4}>
-                <GoogleAuthStatus />
-            </Box>
 
             <Tabs isFitted variant="enclosed" defaultIndex={defaultIndex}>
                 <TabList mb="1em">
