@@ -1,9 +1,10 @@
 import { Box, Heading, VStack, HStack, Input, Button, Table, Thead, Tbody, Tr, Th, Td, Text, useToast, IconButton, Flex, Select, ButtonGroup } from "@chakra-ui/react";
-import { ChevronRightIcon, DeleteIcon, EditIcon } from "@chakra-ui/icons";
+import { ChevronRightIcon, DeleteIcon, EditIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import { useState, useEffect, useMemo } from "react";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
 import FirebaseManager from "../lib/FirebaseManager";
+import { JSONTree } from 'react-json-tree';
 
 interface FirestoreDocument {
     id: string;
@@ -18,6 +19,82 @@ interface PaginationData {
     totalPages: number;
     hasNextPage: boolean;
     hasPreviousPage: boolean;
+}
+
+// Add this theme for the JSON tree
+const jsonTreeTheme = {
+    scheme: 'chakra',
+    base00: '#f8f9fa', // background
+    base0B: '#2a4365', // string/date
+    base0C: '#319795', // number
+    base0D: '#3182ce', // boolean
+    base0E: '#805ad5', // null
+    base09: '#dd6b20', // key
+};
+
+interface ExpandableRowProps {
+    doc: FirestoreDocument;
+    onNavigate: (docId: string) => void;
+    onDelete: (docId: string) => void;
+}
+
+function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    return (
+        <>
+            <Tr>
+                <Td>
+                    <HStack>
+                        <IconButton
+                            aria-label="Toggle expand"
+                            icon={isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                            size="xs"
+                            variant="ghost"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                        />
+                        <Text>{doc.id}</Text>
+                    </HStack>
+                </Td>
+                <Td>
+                    <Text noOfLines={isExpanded ? undefined : 2}>
+                        {JSON.stringify(doc.data)}
+                    </Text>
+                </Td>
+                <Td>
+                    <HStack spacing={2}>
+                        <IconButton
+                            aria-label="Navigate to subcollections"
+                            icon={<ChevronRightIcon />}
+                            size="xs"
+                            onClick={() => onNavigate(doc.id)}
+                        />
+                        <IconButton
+                            aria-label="Delete document"
+                            icon={<DeleteIcon />}
+                            size="xs"
+                            colorScheme="red"
+                            onClick={() => onDelete(doc.id)}
+                        />
+                    </HStack>
+                </Td>
+            </Tr>
+            {isExpanded && (
+                <Tr>
+                    <Td colSpan={3} backgroundColor="gray.50" p={4}>
+                        <Box maxH="400px" overflowY="auto">
+                            <JSONTree
+                                data={doc.data}
+                                theme={jsonTreeTheme}
+                                shouldExpandNode={() => true}
+                                hideRoot
+                            />
+                        </Box>
+                    </Td>
+                </Tr>
+            )}
+        </>
+    );
 }
 
 export function FirestorePanel() {
@@ -76,7 +153,7 @@ export function FirestorePanel() {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             toast({
                 title: 'Error fetching data',
-                description: message.includes('service account') 
+                description: message.includes('service account')
                     ? 'Please configure your service account in Settings first'
                     : message,
                 status: 'error',
@@ -118,7 +195,7 @@ export function FirestorePanel() {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             toast({
                 title: 'Error deleting document',
-                description: message.includes('service account') 
+                description: message.includes('service account')
                     ? 'Please configure your service account in Settings first'
                     : message,
                 status: 'error',
@@ -128,13 +205,45 @@ export function FirestorePanel() {
     };
 
     const navigateToSubcollection = (docId: string) => {
-        setCurrentPath([...currentPath, collection, docId]);
-        setCollection("");
+        const newPath = [...currentPath, collection, docId];
+        setCurrentPath(newPath);
+        setCollection(""); // Clear the current collection input
+        // Reset pagination when navigating
+        setPagination({
+            page: 1,
+            limit: pagination.limit,
+            totalDocs: 0,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false
+        });
+        // Clear current documents
+        setDocuments([]);
+        setIsDocument(false);
+        setDocumentData(null);
     };
 
     const navigateBack = () => {
-        setCurrentPath(currentPath.slice(0, -2));
+        const newPath = currentPath.slice(0, -2);
+        setCurrentPath(newPath);
         setCollection(currentPath[currentPath.length - 2] || "");
+        // Reset pagination when navigating
+        setPagination({
+            page: 1,
+            limit: pagination.limit,
+            totalDocs: 0,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false
+        });
+        // Clear current documents
+        setDocuments([]);
+        setIsDocument(false);
+        setDocumentData(null);
+        // Fetch data for the previous collection
+        if (currentPath[currentPath.length - 2]) {
+            fetchData(1, pagination.limit);
+        }
     };
 
     useEffect(() => {
@@ -177,14 +286,18 @@ export function FirestorePanel() {
                 {isDocument ? (
                     <Box borderWidth="1px" borderRadius="md" p={4}>
                         <Heading size="sm" mb={2}>Document: {documentData?.id}</Heading>
-                        <Box 
-                            as="pre" 
-                            p={2} 
-                            bg="gray.50" 
+                        <Box
                             borderRadius="md"
                             overflowX="auto"
+                            backgroundColor="gray.50"
+                            p={4}
                         >
-                            {JSON.stringify(documentData?.data, null, 2)}
+                            <JSONTree
+                                data={documentData?.data || {}}
+                                theme={jsonTreeTheme}
+                                shouldExpandNode={() => true}
+                                hideRoot
+                            />
                         </Box>
                         <HStack mt={4} spacing={2}>
                             <Button
@@ -211,31 +324,12 @@ export function FirestorePanel() {
                                 </Thead>
                                 <Tbody>
                                     {documents.map((doc) => (
-                                        <Tr key={doc.id}>
-                                            <Td>{doc.id}</Td>
-                                            <Td>
-                                                <Text noOfLines={2}>
-                                                    {JSON.stringify(doc.data)}
-                                                </Text>
-                                            </Td>
-                                            <Td>
-                                                <HStack spacing={2}>
-                                                    <IconButton
-                                                        aria-label="Navigate to subcollections"
-                                                        icon={<ChevronRightIcon />}
-                                                        size="xs"
-                                                        onClick={() => navigateToSubcollection(doc.id)}
-                                                    />
-                                                    <IconButton
-                                                        aria-label="Delete document"
-                                                        icon={<DeleteIcon />}
-                                                        size="xs"
-                                                        colorScheme="red"
-                                                        onClick={() => handleDelete(doc.id)}
-                                                    />
-                                                </HStack>
-                                            </Td>
-                                        </Tr>
+                                        <ExpandableRow
+                                            key={doc.id}
+                                            doc={doc}
+                                            onNavigate={navigateToSubcollection}
+                                            onDelete={handleDelete}
+                                        />
                                     ))}
                                 </Tbody>
                             </Table>
