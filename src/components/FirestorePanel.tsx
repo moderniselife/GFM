@@ -311,28 +311,52 @@ export function FirestorePanel() {
                 {isDocument ? (
                     <Box borderWidth="1px" borderRadius="md" p={4}>
                         <Heading size="sm" mb={2}>Document: {documentData?.id}</Heading>
-                        <Box
-                            borderRadius="md"
-                            overflowX="auto"
-                            backgroundColor="gray.50"
-                            p={4}
-                        >
-                            <JSONTree
-                                data={documentData?.data || {}}
-                                theme={jsonTreeTheme}
-                                shouldExpandNode={() => true}
-                                hideRoot
-                            />
-                        </Box>
-                        <HStack mt={4} spacing={2}>
-                            <Button
-                                size="sm"
-                                colorScheme="red"
-                                onClick={() => handleDelete(documentData?.id || '')}
+                        <VStack align="stretch" spacing={4}>
+                            <Box
+                                borderRadius="md"
+                                overflowX="auto"
+                                backgroundColor="gray.50"
+                                p={4}
                             >
-                                Delete Document
-                            </Button>
-                        </HStack>
+                                <JSONTree
+                                    data={documentData?.data || {}}
+                                    theme={jsonTreeTheme}
+                                    shouldExpandNode={() => true}
+                                    hideRoot
+                                />
+                            </Box>
+
+                            {documentData?.subcollections && documentData.subcollections.length > 0 && (
+                                <Box>
+                                    <Text fontWeight="bold" mb={2}>Subcollections:</Text>
+                                    <HStack spacing={2} wrap="wrap">
+                                        {documentData.subcollections.map((subcollection) => (
+                                            <Button
+                                                key={subcollection}
+                                                size="sm"
+                                                variant="outline"
+                                                leftIcon={<ChevronRightIcon />}
+                                                onClick={() => {
+                                                    setCollection(subcollection);
+                                                }}
+                                            >
+                                                {subcollection}
+                                            </Button>
+                                        ))}
+                                    </HStack>
+                                </Box>
+                            )}
+
+                            <HStack mt={4} spacing={2}>
+                                <Button
+                                    size="sm"
+                                    colorScheme="red"
+                                    onClick={() => handleDelete(documentData?.id || '')}
+                                >
+                                    Delete Document
+                                </Button>
+                            </HStack>
+                        </VStack>
                     </Box>
                 ) : (
                     <>
