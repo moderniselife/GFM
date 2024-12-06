@@ -13,6 +13,65 @@ A desktop application built with React and Electron for managing Firebase projec
 - 🛠 Emulator Controls
 - 🔑 Environment Secrets Management
 - 📝 Real-time Logging
+- and more!
+
+### Rules Panel
+
+- Edit and deploy Firestore and Storage security rules
+- Syntax highlighting with multiple theme options
+- Real-time validation and error checking
+- Auto-completion and bracket matching
+- Dark/Light theme support
+- Support for multiple rule types:
+  - Firestore Rules
+  - Storage Rules
+
+### Settings Panel
+
+- **Service Account Management**
+  - Upload multiple service account keys
+  - Set active service account
+  - Delete service accounts
+  - View service account details and status
+- **Google Analytics Configuration**
+  - Configure GA4 Measurement ID
+  - Manage analytics settings
+  - Enable/disable analytics features
+
+### Analytics Panel
+
+- View real-time analytics data
+- Customizable time ranges
+- User engagement metrics
+- Error handling for:
+  - API permissions
+  - Configuration issues
+  - Service account setup
+- Direct links to enable required APIs
+
+### Storage Panel
+
+- Browse and manage Firebase Storage
+- Upload and download files
+- Create and manage folders
+- View and edit storage rules
+- Manage file permissions
+
+### Auth Panel
+
+- Manage Firebase Authentication
+- View and manage users
+- Configure auth providers
+- Monitor authentication status
+- User role management
+
+### Firestore Panel
+
+- Browse and manage Firestore database
+- Create and edit documents
+- Run queries
+- Manage collections
+- Import/Export data
 
 ## Prerequisites
 
@@ -20,7 +79,7 @@ A desktop application built with React and Electron for managing Firebase projec
 - Firebase CLI installed globally (`npm install -g firebase-tools`)
 - Firebase project already initialized
 - Google Cloud credentials configured
--
+- 
 - 1. Clone the repository:
 
 ```bash
@@ -33,12 +92,23 @@ A desktop application built with React and Electron for managing Firebase projec
    ```bash
    bun install
    ```
-
 3. Start the development server:
 
    ```bash
    bun run start
    ```
+
+## Development
+
+```bash
+bun dev
+```
+
+## Building
+
+```bash
+bun run build
+```
 
 ## Usage
 
