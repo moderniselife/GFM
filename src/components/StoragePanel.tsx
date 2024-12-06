@@ -1,4 +1,4 @@
-import { Box, Button, Heading, VStack, HStack, Text, Input, Table, Thead, Tbody, Tr, Th, Td, IconButton, useToast, Menu, MenuButton, MenuList, MenuItem, Select, ButtonGroup } from "@chakra-ui/react";
+import { Box, Button, Heading, VStack, HStack, Text, Input, Table, Thead, Tbody, Tr, Th, Td, IconButton, useToast, Menu, MenuButton, MenuList, MenuItem, Select, ButtonGroup, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Checkbox, useDisclosure } from "@chakra-ui/react";
 import { DeleteIcon, DownloadIcon, EditIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "@chakra-ui/icons";
 import { useState, useEffect, useMemo } from "react";
 import { useProject } from "../contexts/ProjectContext";
@@ -35,20 +35,26 @@ export function StoragePanel() {
     const [loading, setLoading] = useState(false);
     const [uploadingFile, setUploadingFile] = useState(false);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [projectId, setProjectId] = useState<string | undefined | null>(undefined);
     const { projectDir, serviceKeyAdded } = useProject();
     const { addLog } = useLogs();
     const toast = useToast();
     const manager = useMemo(() => new FirebaseManager(projectDir, addLog), [projectDir, addLog]);
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
+    const [newPath, setNewPath] = useState('');
+    const [keepSourceFile, setKeepSourceFile] = useState(false);
 
     const fetchFiles = async (page = 1) => {
         if (!projectDir) return;
         setLoading(true);
         try {
             const projectId = await manager.getCurrentProjectId();
+            setProjectId(projectId);
             const path = currentPath.join('/');
 
             const response = await fetch(
-                `http://localhost:3001/api/firebase/storage/list?` + 
+                `http://localhost:3001/api/firebase/storage/list?` +
                 `path=${encodeURIComponent(path)}&` +
                 `projectId=${encodeURIComponent(projectId)}&` +
                 `page=${page}&` +
@@ -118,7 +124,7 @@ export function StoragePanel() {
         }
     };
 
-    const handleMove = async (file: StorageFile, newPath: string) => {
+    const handleMove = async (file: StorageFile, newPath: string, keepSource: boolean) => {
         try {
             const projectId = await manager.getCurrentProjectId();
 
@@ -129,6 +135,7 @@ export function StoragePanel() {
                     projectId,
                     sourcePath: file.path,
                     destinationPath: newPath,
+                    deleteSource: !keepSource,
                 }),
             });
 
@@ -138,7 +145,7 @@ export function StoragePanel() {
 
             toast({
                 title: 'Success',
-                description: 'File moved successfully',
+                description: keepSource ? 'File copied successfully' : 'File moved successfully',
                 status: 'success',
                 duration: 3000,
             });
@@ -151,6 +158,11 @@ export function StoragePanel() {
                 status: 'error',
                 duration: 5000,
             });
+        } finally {
+            onClose();
+            setSelectedFile(null);
+            setNewPath('');
+            setKeepSourceFile(false);
         }
     };
 
@@ -189,6 +201,46 @@ export function StoragePanel() {
     useEffect(() => {
         fetchFiles(1);
     }, [currentPath, projectDir, serviceKeyAdded, rowsPerPage]);
+
+    const MoveFileModal = () => (
+        <Modal isOpen={isOpen} onClose={onClose}>
+            <ModalOverlay />
+            <ModalContent>
+                <ModalHeader>Move File</ModalHeader>
+                <ModalBody>
+                    <VStack spacing={4}>
+                        <Input
+                            placeholder="Enter new path"
+                            value={newPath}
+                            onChange={(e) => setNewPath(e.target.value)}
+                            defaultValue={selectedFile?.path}
+                        />
+                        <Checkbox
+                            isChecked={keepSourceFile}
+                            onChange={(e) => setKeepSourceFile(e.target.checked)}
+                        >
+                            Keep original file as revision
+                        </Checkbox>
+                    </VStack>
+                </ModalBody>
+                <ModalFooter>
+                    <Button variant="ghost" mr={3} onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        colorScheme="blue"
+                        onClick={() => {
+                            if (selectedFile && newPath) {
+                                handleMove(selectedFile, newPath, keepSourceFile);
+                            }
+                        }}
+                    >
+                        {keepSourceFile ? 'Copy File' : 'Move File'}
+                    </Button>
+                </ModalFooter>
+            </ModalContent>
+        </Modal>
+    );
 
     return (
         <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" overflowX="auto">
@@ -265,10 +317,11 @@ export function StoragePanel() {
                                             <MenuButton as={IconButton} icon={<EditIcon />} size="xs" />
                                             <MenuList>
                                                 <MenuItem onClick={() => {
-                                                    const newPath = prompt('Enter new path:', file.path);
-                                                    if (newPath) handleMove(file, newPath);
+                                                    setSelectedFile(file);
+                                                    setNewPath(file.path);
+                                                    onOpen();
                                                 }}>
-                                                    Move
+                                                    Move/Copy
                                                 </MenuItem>
                                             </MenuList>
                                         </Menu>
@@ -327,6 +380,7 @@ export function StoragePanel() {
                     </ButtonGroup>
                 </HStack>
             </VStack>
+            <MoveFileModal />
         </Box>
     );
 }

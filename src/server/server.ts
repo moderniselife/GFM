@@ -1219,7 +1219,7 @@ app.post('/api/firebase/storage/upload', upload.single('file'), errorHandler(asy
 
 app.post('/api/firebase/storage/move', errorHandler(async (req, res) => {
   try {
-    const { projectId, sourcePath, destinationPath } = req.body;
+    const { projectId, sourcePath, destinationPath, deleteSource = false } = req.body;
 
     if (!projectId || !sourcePath || !destinationPath) {
       throw new Error('Missing required parameters');
@@ -1242,17 +1242,49 @@ app.post('/api/firebase/storage/move', errorHandler(async (req, res) => {
     const sourceFile = bucket.file(sourcePath);
     const destFile = bucket.file(destinationPath);
 
+    // First verify source file exists
+    const [sourceExists] = await sourceFile.exists();
+    if (!sourceExists) {
+      throw new Error(`Source file ${sourcePath} does not exist`);
+    }
+
     // Copy to new location
-    await sourceFile.copy(destFile);
-    // Delete from old location
-    await sourceFile.delete();
+    const [copyOperation] = await sourceFile.copy(destFile);
+
+    // Verify the copy was successful
+    const [destExists] = await destFile.exists();
+    if (!destExists) {
+      throw new Error('Copy operation failed - destination file not found');
+    }
+
+    if (deleteSource) {
+      // Delete the original file
+      await sourceFile.delete();
+    } else {
+      // Rename the original file to have .revision at the end
+      await sourceFile.rename(`${sourcePath}.revision`);
+    }
+
+    // Final verification that source is gone and destination exists
+    const [sourceStillExists] = await sourceFile.exists();
+    const [destStillExists] = await destFile.exists();
+
+    if (sourceStillExists || !destStillExists) {
+      throw new Error('Move operation failed verification');
+    }
 
     await deleteApp(app);
-    res.json({ success: true });
+    res.json({
+      success: true,
+      source: sourcePath,
+      destination: destinationPath
+    });
   } catch (error) {
     console.error('Storage move error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to move file'
+      error: error instanceof Error ? error.message : 'Failed to move file',
+      source: sourcePath,
+      destination: destinationPath
     });
   }
 }));
