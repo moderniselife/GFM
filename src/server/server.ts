@@ -1,6 +1,6 @@
 import express from 'express';
 import { execSync, spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import cors from 'cors';
 import Server from "ws";
@@ -10,6 +10,14 @@ import { promises as fs } from 'fs';
 import { homedir, tmpdir } from 'os';
 import { initializeApp, cert, ServiceAccount, getApps, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
+import multer from 'multer';
+import { createReadStream, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+// import { getAnalytics } from 'firebase-admin/analytics';
+import { SecurityRules } from 'firebase-admin/security-rules';
+import { BetaAnalyticsDataClient } from '@google-analytics/data';
+
 
 const app = express();
 const server = http.createServer(app);
@@ -1101,6 +1109,727 @@ app.post('/api/firebase/firestore/delete', errorHandler(async (req, res) => {
     console.error('Firestore delete error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to delete document';
     res.status(500).json({ error: errorMessage });
+  }
+}));
+
+// Configure multer for file uploads
+const upload = multer({ dest: tmpdir() });
+
+// Storage endpoints
+app.get('/api/firebase/storage/list', errorHandler(async (req, res) => {
+  try {
+    const path = req.query.path as string;
+    const projectId = req.query.projectId as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured');
+    }
+
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId,
+      storageBucket: `${projectId}.appspot.com`
+    }, `storage-${projectId}`);
+
+    const storage = getStorage(app);
+    const bucket = storage.bucket();
+
+    // Get all files to calculate total
+    const [files] = await bucket.getFiles({ prefix: path });
+
+    // Calculate pagination
+    const totalFiles = files.length;
+    const totalPages = Math.ceil(totalFiles / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+
+    // Get paginated files
+    const paginatedFiles = files.slice(startIndex, endIndex).map(file => ({
+      name: file.name.split('/').pop(),
+      path: file.name,
+      size: parseInt(file.metadata.size),
+      contentType: file.metadata.contentType,
+      updated: file.metadata.updated,
+    }));
+
+    await deleteApp(app);
+    res.json({
+      files: paginatedFiles,
+      totalFiles,
+      totalPages,
+      currentPage: page,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1
+    });
+  } catch (error) {
+    console.error('Storage list error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to list files'
+    });
+  }
+}));
+
+app.post('/api/firebase/storage/upload', upload.single('file'), errorHandler(async (req, res) => {
+  try {
+    const file = req.file;
+    const path = req.body.path;
+    const projectId = req.body.projectId;
+
+    if (!file || !path || !projectId) {
+      throw new Error('Missing required parameters');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured');
+    }
+
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId,
+      storageBucket: `${projectId}.appspot.com`
+    }, `storage-upload-${projectId}`);
+
+    const storage = getStorage(app);
+    const bucket = storage.bucket();
+
+    await bucket.upload(file.path, {
+      destination: path,
+      metadata: {
+        contentType: file.mimetype,
+      },
+    });
+
+    await deleteApp(app);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Storage upload error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to upload file'
+    });
+  }
+}));
+
+app.post('/api/firebase/storage/move', errorHandler(async (req, res) => {
+  try {
+    const { projectId, sourcePath, destinationPath } = req.body;
+
+    if (!projectId || !sourcePath || !destinationPath) {
+      throw new Error('Missing required parameters');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured');
+    }
+
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId,
+      storageBucket: `${projectId}.appspot.com`
+    }, `storage-move-${projectId}`);
+
+    const storage = getStorage(app);
+    const bucket = storage.bucket();
+
+    const sourceFile = bucket.file(sourcePath);
+    const destFile = bucket.file(destinationPath);
+
+    // Copy to new location
+    await sourceFile.copy(destFile);
+    // Delete from old location
+    await sourceFile.delete();
+
+    await deleteApp(app);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Storage move error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to move file'
+    });
+  }
+}));
+
+app.post('/api/firebase/storage/delete', errorHandler(async (req, res) => {
+  try {
+    const { projectId, path } = req.body;
+
+    if (!projectId || !path) {
+      throw new Error('Missing required parameters');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured');
+    }
+
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId,
+      storageBucket: `${projectId}.appspot.com`
+    }, `storage-delete-${projectId}`);
+
+    const storage = getStorage(app);
+    const bucket = storage.bucket();
+
+    await bucket.file(path).delete();
+
+    await deleteApp(app);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Storage delete error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to delete file'
+    });
+  }
+}));
+
+app.get('/api/firebase/storage/download', errorHandler(async (req, res) => {
+  try {
+    const path = req.query.path as string;
+    const projectId = req.query.projectId as string;
+
+    if (!projectId || !path) {
+      throw new Error('Missing required parameters');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured');
+    }
+
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId,
+      storageBucket: `${projectId}.appspot.com`
+    }, `storage-download-${projectId}`);
+
+    const storage = getStorage(app);
+    const bucket = storage.bucket();
+    const file = bucket.file(path);
+
+    const [metadata] = await file.getMetadata();
+    res.setHeader('Content-Type', metadata.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${path.split('/').pop()}"`);
+
+    const fileStream = file.createReadStream();
+    await pipeline(fileStream, res);
+
+    await deleteApp(app);
+  } catch (error) {
+    console.error('Storage download error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to download file'
+    });
+  }
+}));
+
+// app.get('/api/firebase/analytics/data', errorHandler(async (req, res) => {
+//   try {
+//     const projectId = req.query.projectId as string;
+//     const timeRange = req.query.timeRange as string;
+
+//     if (!projectId) {
+//       throw new Error('No project ID provided');
+//     }
+
+//     const serviceAccount = serviceAccounts.get(projectId);
+//     if (!serviceAccount) {
+//       throw new Error('No service account configured for this project. Please add it in the settings.');
+//     }
+
+//     const app = initializeApp({
+//       credential: cert(serviceAccount),
+//       projectId
+//     }, `analytics-${projectId}`);
+
+//     const analytics = getAnalytics(app);
+
+//     // Calculate date range
+//     const endDate = new Date();
+//     const startDate = new Date();
+//     switch (timeRange) {
+//       case '7d':
+//         startDate.setDate(endDate.getDate() - 7);
+//         break;
+//       case '30d':
+//         startDate.setDate(endDate.getDate() - 30);
+//         break;
+//       case '90d':
+//         startDate.setDate(endDate.getDate() - 90);
+//         break;
+//       default:
+//         startDate.setDate(endDate.getDate() - 7);
+//     }
+
+//     // Fetch analytics data
+//     const [
+//       dailyUsers,
+//       monthlyUsers,
+//       totalUsers,
+//       engagementData,
+//       topPagesData,
+//       retentionData
+//     ] = await Promise.all([
+//       analytics.getActiveUsers({ days: 1 }),
+//       analytics.getActiveUsers({ days: 30 }),
+//       analytics.getTotalUsers(),
+//       analytics.getUserEngagement(startDate, endDate),
+//       analytics.getTopPages(startDate, endDate, 10),
+//       analytics.getUserRetention(startDate, endDate)
+//     ]);
+
+//     const analyticsData = {
+//       dailyActiveUsers: dailyUsers,
+//       monthlyActiveUsers: monthlyUsers,
+//       totalUsers,
+//       userEngagement: engagementData.map(d => ({
+//         date: d.date.toISOString().split('T')[0],
+//         sessions: d.sessions,
+//         screenPageViews: d.screenPageViews,
+//         averageSessionDuration: d.averageSessionDuration
+//       })),
+//       topPages: topPagesData.map(p => ({
+//         pagePath: p.pagePath,
+//         pageViews: p.pageViews,
+//         averageEngagementTime: p.averageEngagementTime
+//       })),
+//       userRetention: retentionData.retentionRate
+//     };
+
+//     await deleteApp(app);
+//     res.json(analyticsData);
+//   } catch (error) {
+//     console.error('Analytics error:', error);
+//     res.status(500).json({
+//       error: error instanceof Error ? error.message : 'Failed to fetch analytics data'
+//     });
+//   }
+// }));
+
+app.get('/api/firebase/rules/get', errorHandler(async (req, res) => {
+  try {
+    const projectId = req.query.projectId as string;
+    const type = req.query.type as 'firestore' | 'storage';
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      return res.status(403).json({
+        error: 'No service account configured for this project',
+        code: 'NO_SERVICE_ACCOUNT'
+      });
+    }
+
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId
+    }, `rules-${projectId}`);
+
+    const rules = new SecurityRules(app);
+
+    // Get the rules source based on type
+    const rulesFile = type === 'firestore'
+      ? await rules.getFirestoreRuleset()
+      : await rules.getStorageRuleset();
+
+    await deleteApp(app);
+    res.json({
+      content: rulesFile.source,
+      etag: rulesFile.etag
+    });
+  } catch (error) {
+    console.error('Rules fetch error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch rules',
+      code: 'FETCH_ERROR'
+    });
+  }
+}));
+
+app.post('/api/firebase/rules/set', errorHandler(async (req, res) => {
+  try {
+    const { projectId, type, content, etag } = req.body;
+
+    if (!projectId || !type || !content) {
+      throw new Error('Missing required parameters');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured for this project. Please add it in the settings.');
+    }
+
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId
+    }, `rules-set-${projectId}`);
+
+    const rules = new SecurityRules(app);
+
+    // Create ruleset based on type
+    const rulesFile = type === 'firestore'
+      ? await rules.releaseFirestoreRulesetFromSource(content, etag)
+      : await rules.releaseStorageRulesetFromSource(content, etag);
+
+    await deleteApp(app);
+    res.json({
+      etag: rulesFile.etag
+    });
+  } catch (error) {
+    console.error('Rules save error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to save rules'
+    });
+  }
+}));
+
+// GA4 endpoint
+app.get('/api/ga4/data', errorHandler(async (req, res) => {
+  try {
+    const projectId = req.query.projectId as string;
+    const projectDir = req.query.projectDir as string;
+    const timeRange = req.query.timeRange as string;
+
+    if (!projectId || !projectDir) {
+      throw new Error('Project ID and Project Directory are required');
+    }
+
+    const settingsPath = join(projectDir, '.gfm', 'settings.json');
+    if (!existsSync(settingsPath)) {
+      throw new Error('Project settings not found. Please configure GA4 Measurement ID in settings.');
+    }
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    if (!settings.measurementId) {
+      throw new Error('GA4 Measurement ID not configured. Please add it in settings.');
+    }
+
+    const measurementId = settings.measurementId;
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured for this project');
+    }
+
+    const analyticsDataClient = new BetaAnalyticsDataClient({
+      credentials: serviceAccount
+    });
+
+    // Calculate date range
+    const endDate = new Date();
+    const startDate = new Date();
+    switch (timeRange) {
+      case '7d': startDate.setDate(endDate.getDate() - 7); break;
+      case '30d': startDate.setDate(endDate.getDate() - 30); break;
+      case '90d': startDate.setDate(endDate.getDate() - 90); break;
+      default: startDate.setDate(endDate.getDate() - 7);
+    }
+
+    // Run multiple reports in parallel
+    const [usersReport, pagesReport] = await Promise.all([
+      analyticsDataClient.runReport({
+        property: `properties/${measurementId}`,
+        dateRanges: [{
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: 'today'
+        }],
+        metrics: [
+          { name: 'activeUsers' },
+          { name: 'newUsers' },
+          { name: 'bounceRate' },
+          { name: 'averageSessionDuration' }
+        ],
+        dimensions: [{ name: 'date' }]
+      }),
+      analyticsDataClient.runReport({
+        property: `properties/${measurementId}`,
+        dateRanges: [{
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: 'today'
+        }],
+        metrics: [
+          { name: 'screenPageViews' },
+          { name: 'averageSessionDuration' }
+        ],
+        dimensions: [
+          { name: 'date' },
+          { name: 'pagePath' }
+        ],
+        orderBys: [
+          {
+            metric: { metricName: 'screenPageViews' },
+            desc: true
+          }
+        ],
+        limit: 10
+      })
+    ]);
+
+    const [userRows] = usersReport;
+    const [pageRows] = pagesReport;
+
+    const analyticsData = {
+      activeUsers: userRows.rows?.map(row => ({
+        date: row.dimensionValues?.[0].value || '',
+        count: parseInt(row.metricValues?.[0].value || '0')
+      })) || [],
+      pageViews: pageRows.rows?.map(row => ({
+        date: row.dimensionValues?.[0].value || '',
+        count: parseInt(row.metricValues?.[0].value || '0')
+      })) || [],
+      topPages: pageRows.rows?.map(row => ({
+        pagePath: row.dimensionValues?.[1].value || '',
+        views: parseInt(row.metricValues?.[0].value || '0'),
+        averageTime: parseFloat(row.metricValues?.[1].value || '0')
+      })) || [],
+      totalUsers: userRows.rows?.reduce((sum, row) =>
+        sum + parseInt(row.metricValues?.[0].value || '0'), 0) || 0,
+      newUsers: userRows.rows?.reduce((sum, row) =>
+        sum + parseInt(row.metricValues?.[1].value || '0'), 0) || 0,
+      bounceRate: parseFloat(userRows.rows?.[0].metricValues?.[2].value || '0'),
+      averageSessionDuration: parseFloat(userRows.rows?.[0].metricValues?.[3].value || '0')
+    };
+
+    res.json(analyticsData);
+  } catch (error) {
+    console.error('GA4 error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch GA4 data'
+    });
+  }
+}));
+
+// Add this endpoint to check service account status
+app.get('/api/firebase/service-account/check', errorHandler(async (req, res) => {
+  try {
+    const projectId = req.query.projectId as string;
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    const hasServiceAccount = serviceAccounts.has(projectId);
+    res.json({ hasServiceAccount });
+  } catch (error) {
+    console.error('Service account check error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to check service account'
+    });
+  }
+}));
+
+// Add these endpoints to handle project settings
+
+app.get('/api/project/settings', errorHandler(async (req, res) => {
+  try {
+    const projectDir = req.query.projectDir as string;
+    if (!projectDir) {
+      throw new Error('Project directory is required');
+    }
+
+    const settingsPath = join(projectDir, '.gfm', 'settings.json');
+
+    if (!existsSync(settingsPath)) {
+      return res.json({});
+    }
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    res.json(settings);
+  } catch (error) {
+    console.error('Settings fetch error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch settings'
+    });
+  }
+}));
+
+app.post('/api/project/settings', errorHandler(async (req, res) => {
+  try {
+    const { projectDir, settings } = req.body;
+    if (!projectDir) {
+      throw new Error('Project directory is required');
+    }
+
+    const gfmDir = join(projectDir, '.gfm');
+    if (!existsSync(gfmDir)) {
+      mkdirSync(gfmDir, { recursive: true });
+    }
+
+    const settingsPath = join(gfmDir, 'settings.json');
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Settings save error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to save settings'
+    });
+  }
+}));
+
+// Service account endpoint
+app.post('/api/firebase/service-account/add', upload.single('serviceKey'), errorHandler(async (req, res) => {
+  try {
+    if (!req.file) {
+      throw new Error('No service key file provided');
+    }
+
+    const projectDir = req.body.projectDir;
+    if (!projectDir) {
+      throw new Error('Project directory is required');
+    }
+
+    // Read the uploaded service account key
+    const serviceKey = JSON.parse(readFileSync(req.file.path, 'utf8'));
+    const projectId = serviceKey.project_id;
+    const clientEmail = serviceKey.client_email;
+
+    if (!projectId || !clientEmail) {
+      throw new Error('Invalid service account key: missing required fields');
+    }
+
+    // Create .gfm directory if it doesn't exist
+    const gfmDir = join(projectDir, '.gfm');
+    if (!existsSync(gfmDir)) {
+      mkdirSync(gfmDir, { recursive: true });
+    }
+
+    // Save service account file
+    const serviceAccountPath = join(gfmDir, `${projectId}.json`);
+    writeFileSync(serviceAccountPath, JSON.stringify(serviceKey, null, 2));
+
+    // Update settings
+    const settingsPath = join(gfmDir, 'settings.json');
+    const settings = existsSync(settingsPath) 
+      ? JSON.parse(readFileSync(settingsPath, 'utf8'))
+      : {};
+
+    if (!settings.serviceAccounts) {
+      settings.serviceAccounts = [];
+    }
+
+    // Check if account already exists
+    const existingIndex = settings.serviceAccounts.findIndex(
+      (account: any) => account.projectId === projectId
+    );
+
+    const accountData = {
+      projectId,
+      clientEmail,
+      active: existingIndex === -1 && settings.serviceAccounts.length === 0
+    };
+
+    if (existingIndex >= 0) {
+      settings.serviceAccounts[existingIndex] = accountData;
+    } else {
+      settings.serviceAccounts.push(accountData);
+    }
+
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+
+    // Store in memory if active
+    if (accountData.active) {
+      serviceAccounts.set(projectId, serviceKey);
+    }
+
+    res.json({ success: true, projectId });
+  } catch (error) {
+    console.error('Service account add error:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to add service account' 
+    });
+  }
+}));
+
+// Add these new endpoints for service account management
+
+app.post('/api/firebase/service-account/set-active', errorHandler(async (req, res) => {
+  try {
+    const { projectDir, projectId } = req.body;
+    if (!projectDir || !projectId) {
+      throw new Error('Project directory and project ID are required');
+    }
+
+    const settingsPath = join(projectDir, '.gfm', 'settings.json');
+    const settings = existsSync(settingsPath) 
+      ? JSON.parse(readFileSync(settingsPath, 'utf8'))
+      : {};
+
+    if (!settings.serviceAccounts) {
+      throw new Error('No service accounts found');
+    }
+
+    // Update active status
+    settings.serviceAccounts = settings.serviceAccounts.map((account: any) => ({
+      ...account,
+      active: account.projectId === projectId
+    }));
+
+    // Save updated settings
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+
+    // Update active service account in memory
+    const serviceAccountPath = join(projectDir, '.gfm', `${projectId}.json`);
+    if (existsSync(serviceAccountPath)) {
+      const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+      serviceAccounts.set(projectId, serviceAccount);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Set active service account error:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to set active service account' 
+    });
+  }
+}));
+
+app.post('/api/firebase/service-account/delete', errorHandler(async (req, res) => {
+  try {
+    const { projectDir, projectId } = req.body;
+    if (!projectDir || !projectId) {
+      throw new Error('Project directory and project ID are required');
+    }
+
+    const settingsPath = join(projectDir, '.gfm', 'settings.json');
+    const settings = existsSync(settingsPath) 
+      ? JSON.parse(readFileSync(settingsPath, 'utf8'))
+      : {};
+
+    // Remove from settings
+    if (settings.serviceAccounts) {
+      settings.serviceAccounts = settings.serviceAccounts.filter(
+        (account: any) => account.projectId !== projectId
+      );
+      writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    }
+
+    // Remove service account file
+    const serviceAccountPath = join(projectDir, '.gfm', `${projectId}.json`);
+    if (existsSync(serviceAccountPath)) {
+      unlinkSync(serviceAccountPath);
+    }
+
+    // Remove from memory
+    serviceAccounts.delete(projectId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete service account error:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to delete service account' 
+    });
   }
 }));
 

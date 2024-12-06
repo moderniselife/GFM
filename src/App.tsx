@@ -12,6 +12,9 @@ import { SecretsPanel } from './components/SecretsPanel';
 import { FirestorePanel } from './components/FirestorePanel';
 import { AuthPanel } from './components/AuthPanel';
 import { SettingsPanel } from './components/SettingsPanel';
+import { RulesPanel } from './components/RulesPanel';
+import { StoragePanel } from './components/StoragePanel';
+import { AnalyticsPanel } from './components/AnalyticsPanel';
 
 export default function App() {
   return (
@@ -33,6 +36,12 @@ export default function App() {
             <SimpleGrid columns={2} spacing={8}>
               <FirestorePanel />
               <AuthPanel />
+            </SimpleGrid>
+
+            <SimpleGrid columns={1} spacing={8}>
+              <RulesPanel />
+              <StoragePanel />
+              <AnalyticsPanel />
             </SimpleGrid>
 
             <SimpleGrid columns={1} spacing={8}>
