@@ -35,7 +35,7 @@ const jsonTreeTheme = {
 
 interface ExpandableRowProps {
     doc: FirestoreDocument;
-    onNavigate: (docId: string) => void;
+    onNavigate: (docId: string, subcollection?: string) => void;
     onDelete: (docId: string) => void;
 }
 
@@ -54,7 +54,7 @@ function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
                             variant="ghost"
                             onClick={() => setIsExpanded(!isExpanded)}
                         />
-                        {doc.id}
+                        <Text>{doc.id}</Text>
                     </HStack>
                 </Td>
                 <Td>
@@ -69,7 +69,7 @@ function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
                                 aria-label="Navigate to subcollections"
                                 icon={<ChevronRightIcon />}
                                 size="xs"
-                                onClick={() => onNavigate(doc.id)}
+                                onClick={() => onNavigate(doc.id, undefined)}
                             />
                         )}
                         <IconButton
@@ -103,10 +103,7 @@ function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
                                                 key={subcollection}
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => {
-                                                    onNavigate(doc.id);
-                                                    setCollection(subcollection);
-                                                }}
+                                                onClick={() => onNavigate(doc.id, subcollection)}
                                             >
                                                 {subcollection}
                                             </Button>
@@ -229,11 +226,30 @@ export function FirestorePanel() {
         }
     };
 
-    const navigateToSubcollection = (docId: string) => {
-        const newPath = [...currentPath, collection, docId];
-        setCurrentPath(newPath);
-        setCollection(""); // Clear the current collection input
-        // Reset pagination when navigating
+    const navigateToSubcollection = (docId: string, subcollection?: string) => {
+        if (!subcollection) {
+            // If no subcollection specified, navigate to the document itself
+            const newPath = [...currentPath];
+            if (collection) {
+                newPath.push(collection);
+            }
+            setCurrentPath(newPath);
+            setCollection(docId);
+        } else {
+            // Modified subcollection navigation logic
+            const newPath = [...currentPath];
+            // Only add the current collection and docId if they're not already the last items in the path
+            if (collection && newPath[newPath.length - 1] !== collection) {
+                newPath.push(collection);
+            }
+            if (docId && newPath[newPath.length - 1] !== docId) {
+                newPath.push(docId);
+            }
+            setCurrentPath(newPath);
+            setCollection(subcollection);
+        }
+
+        // Reset pagination and clear documents
         setPagination({
             page: 1,
             limit: pagination.limit,
@@ -242,7 +258,7 @@ export function FirestorePanel() {
             hasNextPage: false,
             hasPreviousPage: false
         });
-        // Clear current documents
+
         setDocuments([]);
         setIsDocument(false);
         setDocumentData(null);
@@ -336,9 +352,7 @@ export function FirestorePanel() {
                                                 size="sm"
                                                 variant="outline"
                                                 leftIcon={<ChevronRightIcon />}
-                                                onClick={() => {
-                                                    setCollection(subcollection);
-                                                }}
+                                                onClick={() => navigateToSubcollection(documentData.id, subcollection)}
                                             >
                                                 {subcollection}
                                             </Button>
@@ -376,7 +390,7 @@ export function FirestorePanel() {
                                         <ExpandableRow
                                             key={doc.id}
                                             doc={doc}
-                                            onNavigate={navigateToSubcollection}
+                                            onNavigate={(docId) => navigateToSubcollection(docId)}
                                             onDelete={handleDelete}
                                         />
                                     ))}
