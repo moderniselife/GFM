@@ -978,61 +978,72 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
       throw new Error('No service account configured for this project. Please add it in the settings.');
     }
 
-    // Initialize Firebase Admin
+    // Initialize Firebase Admin with a unique name
+    const uniqueAppName = `${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const app = initializeApp({
       credential: cert(serviceAccount),
       projectId
-    }, projectId);
+    }, uniqueAppName);
 
     const db = getFirestore(app);
-    const ref = db.doc(path).get().then(doc => {
-      // If it's a document that exists, return it
-      if (doc.exists) {
-        return {
-          isDocument: true,
-          data: {
-            id: doc.id,
-            data: doc.data(),
-            path: doc.ref.path
-          }
-        };
+    
+    // Check if path is a document (even number of segments) or collection (odd number of segments)
+    const segments = path.split('/').filter(Boolean);
+    const isDocumentPath = segments.length % 2 === 0;
+
+    let result;
+    if (isDocumentPath) {
+      // Handle document path
+      const docRef = db.doc(path);
+      const doc = await docRef.get();
+      
+      if (!doc.exists) {
+        throw new Error('Document does not exist');
       }
-    }).catch(() => {
-      // If not a document, try as collection
-      return db.collection(path)
+
+      result = {
+        isDocument: true,
+        data: {
+          id: doc.id,
+          data: doc.data(),
+          path: doc.ref.path
+        }
+      };
+    } else {
+      // Handle collection path
+      const collectionRef = db.collection(path);
+      const querySnapshot = await collectionRef
         .orderBy('__name__')
         .limit(limit)
         .offset((page - 1) * limit)
-        .get()
-        .then(async (querySnapshot) => {
-          const totalSnapshot = await db.collection(path).count().get();
-          const totalDocs = totalSnapshot.data().count;
+        .get();
 
-          const data = [];
-          querySnapshot.forEach(doc => {
-            data.push({
-              id: doc.id,
-              data: doc.data(),
-              path: doc.ref.path
-            });
-          });
+      const totalSnapshot = await collectionRef.count().get();
+      const totalDocs = totalSnapshot.data().count;
 
-          return {
-            isDocument: false,
-            data,
-            pagination: {
-              page,
-              limit,
-              totalDocs,
-              totalPages: Math.ceil(totalDocs / limit),
-              hasNextPage: page * limit < totalDocs,
-              hasPreviousPage: page > 1
-            }
-          };
+      const data = [];
+      querySnapshot.forEach(doc => {
+        data.push({
+          id: doc.id,
+          data: doc.data(),
+          path: doc.ref.path
         });
-    });
+      });
 
-    const result = await ref;
+      result = {
+        isDocument: false,
+        data,
+        pagination: {
+          page,
+          limit,
+          totalDocs,
+          totalPages: Math.ceil(totalDocs / limit),
+          hasNextPage: page * limit < totalDocs,
+          hasPreviousPage: page > 1
+        }
+      };
+    }
+
     await deleteApp(app);
     res.json(result);
 
@@ -1092,11 +1103,12 @@ app.post('/api/firebase/firestore/delete', errorHandler(async (req, res) => {
       throw new Error('No service account configured for this project. Please add it in the settings.');
     }
 
-    // Initialize Firebase Admin
+    // Initialize Firebase Admin with a unique name
+    const uniqueAppName = `${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const app = initializeApp({
       credential: cert(serviceAccount),
       projectId
-    }, projectId);
+    }, uniqueAppName);
 
     const db = getFirestore(app);
     await db.doc(path).delete();

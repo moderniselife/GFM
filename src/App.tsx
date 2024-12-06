@@ -33,7 +33,7 @@ export default function App() {
               <EmulatorPanel />
             </SimpleGrid>
 
-            <SimpleGrid columns={2} spacing={8}>
+            <SimpleGrid columns={1} spacing={8}>
               <FirestorePanel />
               <AuthPanel />
             </SimpleGrid>
