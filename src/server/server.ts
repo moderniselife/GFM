@@ -7,7 +7,9 @@ import Server from "ws";
 import http from 'http';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { promises as fs } from 'fs';
-import { homedir } from 'os';
+import { homedir, tmpdir } from 'os';
+import { initializeApp, cert, ServiceAccount, getApps, deleteApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const app = express();
 const server = http.createServer(app);
@@ -68,6 +70,42 @@ wss.on('connection', (ws: any) => {
     console.log('Client disconnected:', ws.clientId);
   });
 });
+
+// Store service accounts by project ID
+const serviceAccounts = new Map<string, ServiceAccount>();
+
+// Add endpoint to set service account
+app.post('/api/firebase/set-service-account', errorHandler(async (req, res) => {
+  try {
+    const { projectId, serviceAccount } = req.body;
+
+    if (!projectId || !serviceAccount) {
+      throw new Error('Project ID and service account are required');
+    }
+
+    // Validate service account has required fields
+    if (!serviceAccount.project_id || !serviceAccount.private_key || !serviceAccount.client_email) {
+      throw new Error('Invalid service account format');
+    }
+
+    // Store the service account
+    serviceAccounts.set(projectId, serviceAccount);
+
+    // Clean up existing Firebase app if it exists
+    const existingApp = getApps().find(app => app.name === projectId);
+    if (existingApp) {
+      await deleteApp(existingApp);
+    }
+
+    console.log('Service account set for project:', projectId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error setting service account:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to set service account'
+    });
+  }
+}));
 
 // Get current Firebase project
 app.get('/api/firebase/current-project', errorHandler(async (req, res) => {
@@ -788,6 +826,281 @@ app.post('/api/config/save', errorHandler(async (req, res) => {
   } catch (error) {
     console.error('Error saving config:', error);
     throw error;
+  }
+}));
+
+// Firebase Auth endpoints
+app.get('/api/firebase/auth/users', errorHandler(async (req, res) => {
+  try {
+    const dir = req.query.dir as string;
+    const projectId = req.query.projectId as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    // Create a temporary file path
+    const tempFile = join(tmpdir(), `firebase-auth-export-${Date.now()}.json`);
+
+    // Execute the auth export command with the project ID and output file
+    const cmdOutput = execCommand(`firebase auth:export ${tempFile} --format=json --project ${projectId}`, dir);
+    console.log('Firebase CLI Output:', cmdOutput); // Debug log
+
+    try {
+      // Read and parse the exported file using fs.promises
+      const fileContent = await fs.readFile(tempFile, 'utf8');
+      console.log('File Content:', fileContent); // Debug log
+
+      // Clean up the temporary file
+      await fs.unlink(tempFile);
+
+      try {
+        // Handle empty user list
+        if (!fileContent.trim()) {
+          res.json({
+            users: [],
+            pagination: {
+              page: 1,
+              limit,
+              totalUsers: 0,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false
+            }
+          });
+          return;
+        }
+
+        let allUsers;
+        try {
+          allUsers = JSON.parse(fileContent);
+          allUsers = allUsers.users;
+        } catch (jsonError) {
+          // If parsing fails, try to extract JSON from the output
+          const jsonMatch = fileContent.match(/\[.*\]/s);
+          if (jsonMatch) {
+            allUsers = JSON.parse(jsonMatch[0]);
+          } else {
+            throw jsonError;
+          }
+        }
+
+        // Ensure allUsers is an array
+        if (!Array.isArray(allUsers)) {
+          allUsers = [];
+        }
+
+        const totalUsers = allUsers.length;
+        const totalPages = Math.ceil(totalUsers / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const users = allUsers.slice(startIndex, endIndex);
+
+        res.json({
+          users,
+          pagination: {
+            page,
+            limit,
+            totalUsers,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1
+          }
+        });
+      } catch (parseError) {
+        console.error('Parse Error:', parseError);
+        console.error('Failed to parse users data. Content:', fileContent);
+        throw new Error(`Failed to parse users data: ${parseError.message}`);
+      }
+    } catch (fileError) {
+      console.error('File Error:', fileError);
+      throw new Error(`Failed to read authentication data: ${fileError.message}`);
+    }
+  } catch (error) {
+    console.error('Auth export error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch users';
+    res.status(500).json({ error: errorMessage });
+  }
+}));
+
+app.post('/api/firebase/auth/update-user', errorHandler(async (req, res) => {
+  try {
+    const { uid, disabled } = req.body;
+    const dir = req.query.dir as string;
+
+    // First get the current project ID
+    const projectOutput = execCommand('firebase use --json', dir);
+    const { result: projectId } = JSON.parse(projectOutput);
+
+    if (!projectId) {
+      throw new Error('No active project found');
+    }
+
+    // Execute the auth command with the project ID
+    execSync(`firebase auth:${disabled ? 'disable' : 'enable'} ${uid} --project ${projectId}`, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: dir || process.cwd()
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Auth update error:', error);
+    const errorMessage = error.stderr?.toString() || error.message;
+    res.status(500).json({ error: errorMessage });
+  }
+}));
+
+// Firestore endpoints
+app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
+  try {
+    const path = req.query.path as string;
+    const projectId = req.query.projectId as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured for this project. Please add it in the settings.');
+    }
+
+    // Initialize Firebase Admin
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId
+    }, projectId);
+
+    const db = getFirestore(app);
+    const ref = db.doc(path).get().then(doc => {
+      // If it's a document that exists, return it
+      if (doc.exists) {
+        return {
+          isDocument: true,
+          data: {
+            id: doc.id,
+            data: doc.data(),
+            path: doc.ref.path
+          }
+        };
+      }
+    }).catch(() => {
+      // If not a document, try as collection
+      return db.collection(path)
+        .orderBy('__name__')
+        .limit(limit)
+        .offset((page - 1) * limit)
+        .get()
+        .then(async (querySnapshot) => {
+          const totalSnapshot = await db.collection(path).count().get();
+          const totalDocs = totalSnapshot.data().count;
+
+          const data = [];
+          querySnapshot.forEach(doc => {
+            data.push({
+              id: doc.id,
+              data: doc.data(),
+              path: doc.ref.path
+            });
+          });
+
+          return {
+            isDocument: false,
+            data,
+            pagination: {
+              page,
+              limit,
+              totalDocs,
+              totalPages: Math.ceil(totalDocs / limit),
+              hasNextPage: page * limit < totalDocs,
+              hasPreviousPage: page > 1
+            }
+          };
+        });
+    });
+
+    const result = await ref;
+    await deleteApp(app);
+    res.json(result);
+
+  } catch (error) {
+    console.error('Firestore get error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch Firestore data';
+    res.status(500).json({ error: errorMessage });
+  }
+}));
+
+app.get('/api/firebase/firestore/collections', errorHandler(async (req, res) => {
+  try {
+    const dir = req.query.dir as string;
+    const projectId = req.query.projectId as string;
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    // List root collections
+    const output = execCommand(`firebase firestore:indexes list --project ${projectId}`, dir);
+
+    try {
+      // Parse the output to get collection names
+      const collections = output
+        .split('\n')
+        .filter(line => line.includes('collection'))
+        .map(line => {
+          const match = line.match(/collection\s+([^\s]+)/);
+          return match ? match[1] : null;
+        })
+        .filter(Boolean);
+
+      res.json({ collections });
+    } catch (parseError) {
+      console.error('Failed to parse collections:', output);
+      throw new Error('Failed to parse collections data');
+    }
+  } catch (error) {
+    console.error('Firestore collections error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch collections';
+    res.status(500).json({ error: errorMessage });
+  }
+}));
+
+app.post('/api/firebase/firestore/delete', errorHandler(async (req, res) => {
+  try {
+    const { path } = req.body;
+    const projectId = req.query.projectId as string;
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    const serviceAccount = serviceAccounts.get(projectId);
+    if (!serviceAccount) {
+      throw new Error('No service account configured for this project. Please add it in the settings.');
+    }
+
+    // Initialize Firebase Admin
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId
+    }, projectId);
+
+    const db = getFirestore(app);
+    await db.doc(path).delete();
+
+    // Clean up app instance
+    await deleteApp(app);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Firestore delete error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete document';
+    res.status(500).json({ error: errorMessage });
   }
 }));
 

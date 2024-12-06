@@ -9,6 +9,9 @@ import { DependencyInstaller } from "./components/DependencyInstaller";
 import { LogsProvider } from './contexts/LogsContext';
 import { LogsPanel } from './components/LogsPanel';
 import { SecretsPanel } from './components/SecretsPanel';
+import { FirestorePanel } from './components/FirestorePanel';
+import { AuthPanel } from './components/AuthPanel';
+import { SettingsPanel } from './components/SettingsPanel';
 
 export default function App() {
   return (
@@ -21,17 +24,25 @@ export default function App() {
               <ProjectSelector />
             </SimpleGrid>
 
-            <SimpleGrid columns={2} spacing={8}>
+            <SimpleGrid columns={3} spacing={8}>
               <DependencyInstaller />
               <DeploymentPanel />
+              <EmulatorPanel />
             </SimpleGrid>
 
             <SimpleGrid columns={2} spacing={8}>
-              <EmulatorPanel />
-              <SecretsPanel />
+              <FirestorePanel />
+              <AuthPanel />
             </SimpleGrid>
 
-            <LogsPanel />
+            <SimpleGrid columns={1} spacing={8}>
+              <SecretsPanel />
+              <LogsPanel />
+              <SettingsPanel />
+            </SimpleGrid>
+            {/* <SecretsPanel /> */}
+
+            {/* <LogsPanel /> */}
           </Grid>
         </Container>
       </LogsProvider>
