@@ -978,7 +978,6 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
       throw new Error('No service account configured for this project. Please add it in the settings.');
     }
 
-    // Initialize Firebase Admin with a unique name
     const uniqueAppName = `${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const app = initializeApp({
       credential: cert(serviceAccount),
@@ -987,7 +986,6 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
 
     const db = getFirestore(app);
     
-    // Check if path is a document (even number of segments) or collection (odd number of segments)
     const segments = path.split('/').filter(Boolean);
     const isDocumentPath = segments.length % 2 === 0;
 
@@ -1001,12 +999,17 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
         throw new Error('Document does not exist');
       }
 
+      // Get subcollections
+      const collections = await docRef.listCollections();
+      console.log('Document subcollections:', collections.map(col => col.id)); // Debug log
+
       result = {
         isDocument: true,
         data: {
           id: doc.id,
           data: doc.data(),
-          path: doc.ref.path
+          path: doc.ref.path,
+          subcollections: collections.map(col => col.id)
         }
       };
     } else {
@@ -1021,14 +1024,18 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
       const totalSnapshot = await collectionRef.count().get();
       const totalDocs = totalSnapshot.data().count;
 
-      const data = [];
-      querySnapshot.forEach(doc => {
-        data.push({
+      const data = await Promise.all(querySnapshot.docs.map(async doc => {
+        // Get subcollections for each document
+        const collections = await doc.ref.listCollections();
+        console.log(`Subcollections for doc ${doc.id}:`, collections.map(col => col.id)); // Debug log
+
+        return {
           id: doc.id,
           data: doc.data(),
-          path: doc.ref.path
-        });
-      });
+          path: doc.ref.path,
+          subcollections: collections.map(col => col.id)
+        };
+      }));
 
       result = {
         isDocument: false,
@@ -1044,6 +1051,7 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
       };
     }
 
+    console.log('Final result:', JSON.stringify(result, null, 2)); // Debug log
     await deleteApp(app);
     res.json(result);
 
@@ -1103,7 +1111,6 @@ app.post('/api/firebase/firestore/delete', errorHandler(async (req, res) => {
       throw new Error('No service account configured for this project. Please add it in the settings.');
     }
 
-    // Initialize Firebase Admin with a unique name
     const uniqueAppName = `${projectId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const app = initializeApp({
       credential: cert(serviceAccount),

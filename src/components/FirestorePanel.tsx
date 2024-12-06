@@ -10,6 +10,7 @@ interface FirestoreDocument {
     id: string;
     data: any;
     path: string;
+    subcollections: string[];
 }
 
 interface PaginationData {
@@ -53,7 +54,7 @@ function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
                             variant="ghost"
                             onClick={() => setIsExpanded(!isExpanded)}
                         />
-                        <Text>{doc.id}</Text>
+                        {doc.id}
                     </HStack>
                 </Td>
                 <Td>
@@ -63,12 +64,14 @@ function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
                 </Td>
                 <Td>
                     <HStack spacing={2}>
-                        <IconButton
-                            aria-label="Navigate to subcollections"
-                            icon={<ChevronRightIcon />}
-                            size="xs"
-                            onClick={() => onNavigate(doc.id)}
-                        />
+                        {doc.subcollections.length > 0 && (
+                            <IconButton
+                                aria-label="Navigate to subcollections"
+                                icon={<ChevronRightIcon />}
+                                size="xs"
+                                onClick={() => onNavigate(doc.id)}
+                            />
+                        )}
                         <IconButton
                             aria-label="Delete document"
                             icon={<DeleteIcon />}
@@ -82,14 +85,36 @@ function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
             {isExpanded && (
                 <Tr>
                     <Td colSpan={3} backgroundColor="gray.50" p={4}>
-                        <Box maxH="400px" overflowY="auto">
-                            <JSONTree
-                                data={doc.data}
-                                theme={jsonTreeTheme}
-                                shouldExpandNode={() => true}
-                                hideRoot
-                            />
-                        </Box>
+                        <VStack align="stretch" spacing={4}>
+                            <Box maxH="400px" overflowY="auto">
+                                <JSONTree
+                                    data={doc.data}
+                                    theme={jsonTreeTheme}
+                                    shouldExpandNode={() => true}
+                                    hideRoot
+                                />
+                            </Box>
+                            {doc.subcollections.length > 0 && (
+                                <Box>
+                                    <Text fontWeight="bold" mb={2}>Subcollections:</Text>
+                                    <HStack spacing={2}>
+                                        {doc.subcollections.map((subcollection) => (
+                                            <Button
+                                                key={subcollection}
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    onNavigate(doc.id);
+                                                    setCollection(subcollection);
+                                                }}
+                                            >
+                                                {subcollection}
+                                            </Button>
+                                        ))}
+                                    </HStack>
+                                </Box>
+                            )}
+                        </VStack>
                     </Td>
                 </Tr>
             )}
