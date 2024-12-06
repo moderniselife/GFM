@@ -1,4 +1,4 @@
-import { Box, Heading, VStack, HStack, Select, Text, Spinner, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, StatArrow, useToast, Alert, AlertIcon, AlertTitle, AlertDescription, Button, Link } from "@chakra-ui/react";
+import { Box, Heading, VStack, HStack, Select, Text, Spinner, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, StatArrow, useToast, Alert, AlertIcon, AlertTitle, AlertDescription, Button, Link, ListItem, OrderedList } from "@chakra-ui/react";
 import { useState, useEffect, useMemo } from "react";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
@@ -47,6 +47,29 @@ interface AnalyticsData {
     averageSessionDuration: number;
 }
 
+const getPermissionErrorDetails = (error: string) => {
+    if (error.includes('PERMISSION_DENIED')) {
+        return {
+            title: 'Additional Permissions Required',
+            message: 'The service account needs Google Analytics API access.',
+            steps: [
+                'Go to Google Cloud Console',
+                'Select your project',
+                'Search for "Google Analytics Data API"',
+                'Click "Enable"',
+                'Go to IAM & Admin',
+                'Find your service account',
+                'Edit (pencil icon)',
+                'Add these roles:',
+                '- Firebase Analytics Admin',
+                '- Analytics Data Viewer',
+                '- Analytics Admin'
+            ]
+        };
+    }
+    return null;
+};
+
 export function AnalyticsPanel() {
     const [timeRange, setTimeRange] = useState('7d');
     const [loading, setLoading] = useState(false);
@@ -56,6 +79,7 @@ export function AnalyticsPanel() {
     const { addLog } = useLogs();
     const toast = useToast();
     const manager = useMemo(() => new FirebaseManager(projectDir, addLog), [projectDir, addLog]);
+    const [projectId, setProjectId] = useState<string | null>(null);
 
     const fetchAnalytics = async () => {
         if (!projectDir) return;
@@ -64,57 +88,35 @@ export function AnalyticsPanel() {
         setError(null);
         try {
             const projectId = await manager.getCurrentProjectId();
+            setProjectId(projectId);
             const response = await fetch(
                 `http://localhost:3001/api/ga4/data?projectId=${encodeURIComponent(projectId)}&timeRange=${timeRange}&projectDir=${encodeURIComponent(projectDir)}`
             );
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch analytics data');
-            }
-
             const data = await response.json();
 
             if (!response.ok) {
-                // Handle specific error cases
-                if (data.error?.includes('PERMISSION_DENIED')) {
-                    const match = data.error.match(/project\s(\d+)/);
-                    const projectNum = match ? match[1] : '';
-                    setError({
-                        type: 'permission',
-                        message: 'Google Analytics Data API is not enabled for this project.',
-                        link: `https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=${projectNum}`
-                    });
-                } else if (data.error?.includes('GA4 Measurement ID not configured')) {
-                    setError({
-                        type: 'config',
-                        message: 'GA4 Measurement ID is not configured.',
-                        link: '/settings' // Internal link to settings
-                    });
-                } else if (data.error?.includes('No service account configured')) {
-                    setError({
-                        type: 'service_account',
-                        message: 'No service account is configured for this project.',
-                        link: '/settings'
-                    });
-                } else {
-                    setError({
-                        type: 'unknown',
-                        message: data.error || 'An unknown error occurred'
-                    });
-                }
+                setError({
+                    type: 'permission',
+                    message: data.error || 'Failed to fetch analytics data'
+                });
                 throw new Error(data.error);
             }
 
             setAnalyticsData(data);
             addLog('Fetched analytics data successfully', 'success');
         } catch (error) {
+            setError({
+                type: 'permission',
+                message: error instanceof Error ? error.message : 'Failed to fetch analytics data'
+            });
+            addLog(`Failed to fetch analytics: ${error}`, 'error');
             toast({
                 title: 'Error fetching analytics',
                 description: error instanceof Error ? error.message : 'Unknown error occurred',
                 status: 'error',
                 duration: 5000,
             });
-            addLog(`Failed to fetch analytics: ${error}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -133,6 +135,44 @@ export function AnalyticsPanel() {
     }
 
     if (error) {
+        const permissionError = getPermissionErrorDetails(error.message);
+        if (permissionError) {
+            return (
+                <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
+                    <Alert
+                        status="warning"
+                        variant="subtle"
+                        flexDirection="column"
+                        alignItems="start"
+                        gap={4}
+                        mb={4}
+                    >
+                        <AlertIcon />
+                        <Box>
+                            <AlertTitle>{permissionError.title}</AlertTitle>
+                            <AlertDescription>
+                                <Text mb={4}>{permissionError.message}</Text>
+                                <OrderedList spacing={2}>
+                                    {permissionError.steps.map((step, index) => (
+                                        <ListItem key={index}>{step}</ListItem>
+                                    ))}
+                                </OrderedList>
+                            </AlertDescription>
+                        </Box>
+                    </Alert>
+                    <Button
+                        as="a"
+                        href={`https://console.cloud.google.com/apis/api/analyticsdata.googleapis.com/overview?project=${projectId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        colorScheme="blue"
+                        leftIcon={<ExternalLinkIcon />}
+                    >
+                        Open Google Cloud Console
+                    </Button>
+                </Box>
+            );
+        }
         return (
             <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%">
                 <VStack spacing={4} align="stretch">

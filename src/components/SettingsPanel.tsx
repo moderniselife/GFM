@@ -4,7 +4,7 @@ import {
     useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
     ModalCloseButton, Badge
 } from "@chakra-ui/react";
-import { DeleteIcon, AddIcon, CheckIcon, WarningIcon } from '@chakra-ui/icons';
+import { DeleteIcon, AddIcon, CheckIcon, WarningIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useState, useEffect } from "react";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
@@ -249,7 +249,17 @@ export function SettingsPanel() {
                                             </Text>
                                         </VStack>
                                         <HStack>
-                                            {!account.active && (
+                                            {account.active ? (
+                                                <Button
+                                                    size="sm"
+                                                    colorScheme="blue"
+                                                    leftIcon={<RepeatIcon />}
+                                                    onClick={() => handleSetActiveAccount(account.projectId)}
+                                                    title="Reactivate service account"
+                                                >
+                                                    Reactivate
+                                                </Button>
+                                            ) : (
                                                 <IconButton
                                                     aria-label="Set as active"
                                                     icon={<CheckIcon />}
