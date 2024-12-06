@@ -6,19 +6,28 @@ import { Panel } from "./Panel";
 export function GoogleAuthStatusPanel() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [isADCConfigured, setIsADCConfigured] = useState<boolean>(false);
+    const [isFirebaseCLIAuthenticated, setIsFirebaseCLIAuthenticated] = useState<boolean>(false);
     const [checking, setChecking] = useState(true);
     const toast = useToast();
 
     const checkAuthStatus = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/gcloud/auth-status');
-            const data = await response.json();
-            setIsAuthenticated(data.isAuthenticated);
-            setIsADCConfigured(data.isADCConfigured);
+            const [gcloudResponse, firebaseResponse] = await Promise.all([
+                fetch('http://localhost:3001/api/gcloud/auth-status'),
+                fetch('http://localhost:3001/api/firebase/current-project')
+            ]);
+
+            const gcloudData = await gcloudResponse.json();
+            const firebaseData = await firebaseResponse.json();
+
+            setIsAuthenticated(gcloudData.isAuthenticated);
+            setIsADCConfigured(gcloudData.isADCConfigured);
+            setIsFirebaseCLIAuthenticated(firebaseData.project !== 'No current project');
         } catch (error) {
             console.error('Failed to check auth status:', error);
             setIsAuthenticated(false);
             setIsADCConfigured(false);
+            setIsFirebaseCLIAuthenticated(false);
         } finally {
             setChecking(false);
         }
@@ -104,14 +113,51 @@ export function GoogleAuthStatusPanel() {
         }
     };
 
+    const handleFirebaseLogin = async () => {
+        try {
+            toast({
+                title: "Opening Firebase login...",
+                description: "Please complete the login in your browser",
+                status: "info",
+                duration: null,
+                isClosable: true,
+            });
+
+            const response = await fetch('http://localhost:3001/api/firebase/login', {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Firebase login failed');
+            }
+            
+            setTimeout(async () => {
+                await checkAuthStatus();
+                toast({
+                    title: "Firebase authentication successful",
+                    status: "success",
+                    duration: 3000,
+                });
+            }, 1000);
+            
+        } catch (error) {
+            toast({
+                title: "Firebase authentication failed",
+                description: error instanceof Error ? error.message : "Unknown error occurred",
+                status: "error",
+                duration: 3000,
+            });
+        }
+    };
+
     if (checking) {
         return (
-            <Box p={4} borderRadius="lg" boxShadow="sm" bg="white">
+            <Panel title="Authentication Status">
                 <Text display="flex" alignItems="center" gap={2}>
                     <span className="loading loading-spinner loading-sm"></span>
                     Checking authentication status...
                 </Text>
-            </Box>
+            </Panel>
         );
     }
 
@@ -134,6 +180,24 @@ export function GoogleAuthStatusPanel() {
                                 </Text>
                                 <Text fontSize="sm" color={isAuthenticated ? 'green.600' : 'red.600'}>
                                     {isAuthenticated ? 'Authenticated' : 'Not authenticated'}
+                                </Text>
+                            </Box>
+                        </HStack>
+
+                        <HStack
+                            p={3}
+                            bg={isFirebaseCLIAuthenticated ? 'green.50' : 'red.50'}
+                            borderRadius="md"
+                        >
+                            <Box fontSize="xl">
+                                {isFirebaseCLIAuthenticated ? '🔥' : '⚠️'}
+                            </Box>
+                            <Box flex="1">
+                                <Text fontWeight="medium">
+                                    Firebase CLI Status
+                                </Text>
+                                <Text fontSize="sm" color={isFirebaseCLIAuthenticated ? 'green.600' : 'red.600'}>
+                                    {isFirebaseCLIAuthenticated ? 'Authenticated' : 'Not authenticated'}
                                 </Text>
                             </Box>
                         </HStack>
@@ -168,6 +232,17 @@ export function GoogleAuthStatusPanel() {
                             w="full"
                         >
                             Login to Google Cloud
+                        </Button>
+                    )}
+                    {!isFirebaseCLIAuthenticated && (
+                        <Button
+                            colorScheme="orange"
+                            onClick={handleFirebaseLogin}
+                            size="md"
+                            leftIcon={<span>🔥</span>}
+                            w="full"
+                        >
+                            Login to Firebase
                         </Button>
                     )}
                     {isAuthenticated && !isADCConfigured && (

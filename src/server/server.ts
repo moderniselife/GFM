@@ -1910,6 +1910,18 @@ app.post('/api/config/load', errorHandler(async (req, res) => {
   }
 }));
 
+app.post('/api/firebase/login', errorHandler(async (req, res) => {
+    try {
+        execCommand('firebase login');
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Firebase login error:', error);
+        res.status(500).json({
+            error: error instanceof Error ? error.message : 'Firebase login failed'
+        });
+    }
+}));
+
 server.listen(port, () => {
   console.log(`Firebase Manager API running on port ${port}`);
 }); 
