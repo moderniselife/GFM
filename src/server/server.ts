@@ -7,6 +7,7 @@ import Server from "ws";
 import http from 'http';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { promises as fs } from 'fs';
+import { homedir } from 'os';
 
 const app = express();
 const server = http.createServer(app);
@@ -431,7 +432,7 @@ app.get('/api/firebase/projects', errorHandler(async (req, res) => {
   }
 }));
 
-// Add this new endpoint
+// Update the secrets fetch endpoints with better error handling
 app.post('/api/secrets/fetch', errorHandler(async (req, res) => {
   try {
     const { projectDir, environment, projectId } = req.body;
@@ -440,17 +441,30 @@ app.post('/api/secrets/fetch', errorHandler(async (req, res) => {
     // Construct the secret name based on environment
     const secretName = `projects/${projectId}/secrets/${environment}-env/versions/latest`;
 
-    // Access the secret
+    try {
+      // First check if the secret exists
+      await client.accessSecretVersion({
+        name: secretName,
+      });
+    } catch (error: any) {
+      // Check for specific error types
+      if (error.code === 5) { // NOT_FOUND
+        throw new Error(`Secret '${environment}-env' not found. Please ensure the secret exists in your Google Cloud project.`);
+      } else if (error.code === 7) { // PERMISSION_DENIED
+        throw new Error(`Permission denied. Please ensure you have the 'Secret Manager Secret Accessor' role.`);
+      } else if (error.message?.includes('Could not load the default credentials')) {
+        throw new Error('Authentication failed. Please try logging in again with Google Cloud.');
+      }
+      throw error;
+    }
+
+    // If we get here, the secret exists and we have access
     const [version] = await client.accessSecretVersion({
       name: secretName,
     });
 
     const secretValue = version.payload.data.toString();
-
-    // Determine the file path based on environment
     const filePath = join(projectDir, `.env.${environment}`);
-
-    // Write the secret to a file
     await fs.writeFile(filePath, secretValue);
 
     res.json({
@@ -460,7 +474,8 @@ app.post('/api/secrets/fetch', errorHandler(async (req, res) => {
   } catch (error) {
     console.error('Error fetching secrets:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch secrets'
+      error: error instanceof Error ? error.message : 'Failed to fetch secrets',
+      code: error.code
     });
   }
 }));
@@ -471,10 +486,10 @@ app.get('/api/firebase/running-emulators', errorHandler(async (req, res) => {
     // Use ps command to find running emulator processes
     const psOutput = execCommand('ps aux | grep "firebase emulators"');
     const lines = psOutput.split('\n');
-    
+
     // Extract running emulators from the command line
     const runningEmulators = new Set<string>();
-    
+
     lines.forEach(line => {
       if (line.includes('--only')) {
         const match = line.match(/--only\s+([^\s]+)/);
@@ -499,40 +514,280 @@ app.get('/api/firebase/running-emulators', errorHandler(async (req, res) => {
   }
 }));
 
-// Add this new endpoint for custom secrets
+// Update the secrets fetch endpoints with better error handling
 app.post('/api/secrets/fetch-custom', errorHandler(async (req, res) => {
   try {
     const { projectDir, secretKey, targetPath, projectId } = req.body;
+
+    if (!projectId) {
+      throw new Error('No project ID provided');
+    }
+
+    console.log(`Fetching secret: ${secretKey} for project: ${projectId}`);
     const client = new SecretManagerServiceClient();
 
     // Construct the secret name
     const secretName = `projects/${projectId}/secrets/${secretKey}/versions/latest`;
+    console.log(`Accessing secret: ${secretName}`);
 
-    // Access the secret
-    const [version] = await client.accessSecretVersion({
-      name: secretName,
+    try {
+      // Add a timeout to the secret access
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out')), 5000);
+      });
+
+      const secretPromise = client.accessSecretVersion({ name: secretName });
+      const [version] = await Promise.race([secretPromise, timeoutPromise]) as any;
+
+      if (!version?.payload?.data) {
+        throw new Error('Secret payload is empty');
+      }
+
+      const secretValue = version.payload.data.toString();
+      const targetPaths = Array.isArray(targetPath) ? targetPath : [targetPath];
+      const results = [];
+
+      for (const path of targetPaths) {
+        const filePath = join(projectDir, path);
+
+        // Create directory if it doesn't exist
+        await fs.mkdir(dirname(filePath), { recursive: true });
+
+        // Write the file
+        await fs.writeFile(filePath, secretValue);
+
+        // Verify file was created
+        const fileExists = await fs.access(filePath)
+          .then(() => true)
+          .catch(() => false);
+
+        if (!fileExists) {
+          throw new Error(`Failed to create file at ${filePath}`);
+        }
+
+        console.log(`✅ Secret written to: ${filePath}`);
+        results.push({ targetPath: path, absolutePath: filePath });
+      }
+
+      res.json({
+        success: true,
+        results
+      });
+
+    } catch (error: any) {
+      console.error('Error accessing secret:', error);
+
+      if (error.message === 'Request timed out') {
+        throw new Error(`Timeout while accessing secret '${secretKey}'. Please check your internet connection and try again.`);
+      }
+
+      // NOT_FOUND (code 5) means the secret doesn't exist
+      if (error.code === 5 || error.details?.includes('NOT_FOUND')) {
+        throw new Error(`❌ Secret '${secretKey}' does not exist in project '${projectId}'. Please create it first in the Google Cloud Console. - https://console.cloud.google.com/security/secret-manager?project=${projectId}`);
+      }
+
+      if (error.code === 7) { // PERMISSION_DENIED
+        throw new Error(`❌ Permission denied accessing secret '${secretKey}'. Please ensure you have the 'Secret Manager Secret Accessor' role.`);
+      }
+
+      if (error.message?.includes('Could not load the default credentials')) {
+        throw new Error('❌ Authentication failed. Please ensure you have completed the Google Cloud login and ADC setup.');
+      }
+
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Error in fetch-custom:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch custom secret',
+      code: (error as any).code,
+      details: (error as any).details
+    });
+  }
+}));
+
+// Update the auth status endpoint
+app.get('/api/gcloud/auth-status', errorHandler(async (req, res) => {
+  try {
+    // Check if user is authenticated with gcloud
+    let isAuthenticated = false;
+    try {
+      execCommand('gcloud auth print-access-token');
+      isAuthenticated = true;
+    } catch (error) {
+      isAuthenticated = false;
+    }
+
+    // Check if ADC is configured by looking for the credentials file
+    const adcPath = join(homedir(), '.config/gcloud/application_default_credentials.json');
+    const isADCConfigured = existsSync(adcPath);
+
+    res.json({
+      isAuthenticated,
+      isADCConfigured
+    });
+  } catch (error) {
+    console.error('Auth status check error:', error);
+    res.json({
+      isAuthenticated: false,
+      isADCConfigured: false
+    });
+  }
+}));
+
+app.post('/api/gcloud/login', errorHandler(async (req, res) => {
+  try {
+    // Execute gcloud auth login command
+    execCommand('gcloud auth login');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Login failed'
+    });
+  }
+}));
+
+app.post('/api/gcloud/setup-adc', errorHandler(async (req, res) => {
+  try {
+    // Execute gcloud auth application-default login command
+    execCommand('gcloud auth application-default login');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('ADC setup error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'ADC setup failed'
+    });
+  }
+}));
+
+// Add this new endpoint
+app.post('/api/files/exists', errorHandler(async (req, res) => {
+  try {
+    const { projectDir, filePath } = req.body;
+    const fullPath = join(projectDir, filePath);
+
+    const exists = await fs.access(fullPath)
+      .then(() => true)
+      .catch(() => false);
+
+    res.json({ exists });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to check file existence'
+    });
+  }
+}));
+
+// Add this new endpoint
+app.post('/api/secrets/create', errorHandler(async (req, res) => {
+  try {
+    const { projectId, secretKey, secretValue } = req.body;
+    console.log('Creating secret:', { projectId, secretKey, secretValueLength: secretValue?.length });
+
+    // First verify authentication
+    try {
+      const authOutput = execCommand('gcloud auth print-access-token');
+      console.log('Authentication verified');
+    } catch (error) {
+      throw new Error('Authentication failed. Please ensure you are logged in with `gcloud auth login` and have run `gcloud auth application-default login`');
+    }
+
+    // Create client with explicit credentials
+    const client = new SecretManagerServiceClient({
+      projectId,
+      keyFilename: join(homedir(), '.config/gcloud/application_default_credentials.json')
+    });
+    console.log('SecretManager client created');
+
+    // Add a timeout to the create secret operation
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Operation timed out')), 10000);
     });
 
-    const secretValue = version.payload.data.toString();
+    // Create secret with timeout
+    try {
+      console.log('Attempting to create secret...');
+      await Promise.race([
+        client.createSecret({
+          parent: `projects/${projectId}`,
+          secretId: secretKey,
+          secret: {
+            replication: {
+              automatic: {}
+            }
+          }
+        }),
+        timeoutPromise
+      ]);
+      console.log('Secret created successfully');
+    } catch (error: any) {
+      console.log('Create secret error:', error.code, error.message);
+      if (error.message === 'Operation timed out') {
+        throw new Error('Failed to create secret: operation timed out. Please verify your permissions and authentication.');
+      }
+      // Ignore error if secret already exists (error code 6)
+      if (error.code !== 6) {
+        throw error;
+      }
+      console.log('Secret already exists, continuing...');
+    }
 
-    // Determine the full file path
-    const filePath = join(projectDir, targetPath);
+    // Add secret version with timeout
+    console.log('Adding secret version...');
+    const [version] = await Promise.race([
+      client.addSecretVersion({
+        parent: `projects/${projectId}/secrets/${secretKey}`,
+        payload: {
+          data: Buffer.from(secretValue, 'utf8')
+        }
+      }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Operation timed out')), 10000);
+      })
+    ]) as any;
 
-    // Ensure the directory exists
-    await fs.mkdir(dirname(filePath), { recursive: true });
-
-    // Write the secret to the file
-    await fs.writeFile(filePath, secretValue);
+    console.log('Secret version added:', version.name);
 
     res.json({
       success: true,
-      filePath: targetPath
+      version: version.name
+    });
+
+  } catch (error: any) {
+    console.error('Error creating secret:', {
+      code: error.code,
+      message: error.message,
+      details: error.details
+    });
+
+    if (error.code === 7) { // PERMISSION_DENIED
+      throw new Error('Permission denied. Please ensure you have the "Secret Manager Admin" role.');
+    }
+    if (error.message?.includes('Could not load the default credentials')) {
+      throw new Error('Authentication failed. Please ensure you have completed the Google Cloud login and ADC setup.');
+    }
+
+    throw error;
+  }
+}));
+
+// Add this endpoint to save the updated config file
+app.post('/api/config/save', errorHandler(async (req, res) => {
+  try {
+    const { projectDir, config } = req.body;
+    const configPath = join(projectDir, 'secrets.config.json');
+
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+
+    res.json({
+      success: true,
+      path: configPath
     });
   } catch (error) {
-    console.error('Error fetching custom secret:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch custom secret'
-    });
+    console.error('Error saving config:', error);
+    throw error;
   }
 }));
 

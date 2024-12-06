@@ -316,6 +316,49 @@ class FirebaseManager {
     const { runningEmulators } = await response.json();
     return runningEmulators;
   }
+
+  public async createSecret(secretKey: string, secretValue: string): Promise<void> {
+    if (!this.currentProjectId) {
+      this.currentProjectId = await this.getCurrentProject();
+      if (!this.currentProjectId) {
+        throw new Error('No project selected. Please select a project first.');
+      }
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      const response = await fetch(`${this.baseUrl}/secrets/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: this.currentProjectId,
+          secretKey,
+          secretValue
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create secret');
+      }
+
+      this.log(`Secret '${secretKey}' created successfully`, 'success');
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        this.log('Request timed out. Please check your authentication and try again.', 'error');
+        throw new Error('Request timed out. Please check your authentication and try again.');
+      }
+      this.log(`Failed to create secret: ${error}`, 'error');
+      throw error;
+    }
+  }
 }
 
 export default FirebaseManager;
