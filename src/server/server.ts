@@ -1711,7 +1711,7 @@ app.post('/api/firebase/service-account/add', upload.single('serviceKey'), error
 
     // Update settings
     const settingsPath = join(gfmDir, 'settings.json');
-    const settings = existsSync(settingsPath) 
+    const settings = existsSync(settingsPath)
       ? JSON.parse(readFileSync(settingsPath, 'utf8'))
       : {};
 
@@ -1746,8 +1746,8 @@ app.post('/api/firebase/service-account/add', upload.single('serviceKey'), error
     res.json({ success: true, projectId });
   } catch (error) {
     console.error('Service account add error:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to add service account' 
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to add service account'
     });
   }
 }));
@@ -1762,7 +1762,7 @@ app.post('/api/firebase/service-account/set-active', errorHandler(async (req, re
     }
 
     const settingsPath = join(projectDir, '.gfm', 'settings.json');
-    const settings = existsSync(settingsPath) 
+    const settings = existsSync(settingsPath)
       ? JSON.parse(readFileSync(settingsPath, 'utf8'))
       : {};
 
@@ -1789,8 +1789,8 @@ app.post('/api/firebase/service-account/set-active', errorHandler(async (req, re
     res.json({ success: true });
   } catch (error) {
     console.error('Set active service account error:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to set active service account' 
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to set active service account'
     });
   }
 }));
@@ -1803,7 +1803,7 @@ app.post('/api/firebase/service-account/delete', errorHandler(async (req, res) =
     }
 
     const settingsPath = join(projectDir, '.gfm', 'settings.json');
-    const settings = existsSync(settingsPath) 
+    const settings = existsSync(settingsPath)
       ? JSON.parse(readFileSync(settingsPath, 'utf8'))
       : {};
 
@@ -1827,8 +1827,34 @@ app.post('/api/firebase/service-account/delete', errorHandler(async (req, res) =
     res.json({ success: true });
   } catch (error) {
     console.error('Delete service account error:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to delete service account' 
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to delete service account'
+    });
+  }
+}));
+
+// Add this new endpoint to load the config file
+app.post('/api/config/load', errorHandler(async (req, res) => {
+  try {
+    const { projectDir } = req.body;
+    if (!projectDir) {
+      throw new Error('Project directory is required');
+    }
+
+    const configPath = join(projectDir, 'secrets.config.json');
+
+    // Check if config file exists
+    if (!existsSync(configPath)) {
+      return res.json(null);
+    }
+
+    // Read and parse the config file
+    const config = JSON.parse(readFileSync(configPath, 'utf8'));
+    res.json(config);
+  } catch (error) {
+    console.error('Config load error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to load config file'
     });
   }
 }));

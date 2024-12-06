@@ -10,8 +10,8 @@ interface User {
   emailVerified: boolean;
   displayName: string | null;
   disabled: boolean;
-  creationTime: string;
-  lastSignInTime: string;
+  createdAt: string;
+  lastSignedInAt: string;
 }
 
 interface PaginationData {
@@ -34,7 +34,7 @@ export function AuthPanel() {
     hasNextPage: false,
     hasPreviousPage: false
   });
-  
+
   const { projectDir } = useProject();
   const { addLog } = useLogs();
   const toast = useToast();
@@ -62,12 +62,12 @@ export function AuthPanel() {
       const response = await fetch(
         `http://localhost:3001/api/firebase/auth/users?dir=${encodeURIComponent(projectDir)}&projectId=${encodeURIComponent(projectId)}&page=${page}&limit=${limit}`
       );
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to fetch users');
       }
-      
+
       const data = await response.json();
       setUsers(data.users);
       setPagination(data.pagination);
@@ -95,7 +95,7 @@ export function AuthPanel() {
       }
 
       const response = await fetch(
-        `http://localhost:3001/api/firebase/auth/update-user?dir=${encodeURIComponent(projectDir)}&projectId=${encodeURIComponent(projectId)}`, 
+        `http://localhost:3001/api/firebase/auth/update-user?dir=${encodeURIComponent(projectDir)}&projectId=${encodeURIComponent(projectId)}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -107,7 +107,7 @@ export function AuthPanel() {
         const error = await response.json();
         throw new Error(error.error || 'Failed to update user');
       }
-      
+
       await fetchUsers(); // Refresh the list
       toast({
         title: 'Success',
@@ -173,8 +173,8 @@ export function AuthPanel() {
                       {user.disabled ? 'Disabled' : 'Active'}
                     </Badge>
                   </Td>
-                  <Td>{new Date(user.creationTime).toLocaleDateString()}</Td>
-                  <Td>{new Date(user.lastSignInTime).toLocaleDateString()}</Td>
+                  <Td>{new Date(parseInt(user.createdAt)).toLocaleDateString()}</Td>
+                  <Td>{new Date(parseInt(user.lastSignedInAt)).toLocaleDateString()}</Td>
                   <Td>
                     <Button
                       size="xs"

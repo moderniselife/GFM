@@ -3,7 +3,7 @@ import { Button } from '@chakra-ui/button';
 import { Wrap, WrapItem } from '@chakra-ui/layout';
 import { Checkbox } from '@chakra-ui/checkbox';
 import { useToast } from "@chakra-ui/toast";
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import FirebaseManager from "../lib/FirebaseManager";
 import { useProject } from "../contexts/ProjectContext";
@@ -55,6 +55,9 @@ export function SecretsPanel() {
     const toast = useToast();
     const { projectDir } = useProject();
     const { addLog } = useLogs();
+    const [defaultIndex, setDefaultIndex] = useState(0);
+    const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
+    const loadAttempted = useRef(false);
 
     const manager = useMemo(() => new FirebaseManager(projectDir, addLog), [projectDir, addLog]);
 
@@ -253,6 +256,9 @@ export function SecretsPanel() {
         const statuses: { [key: string]: FileStatus } = {};
 
         for (const secret of config.secrets) {
+            // Skip if we've already checked this secret
+            if (checkedFiles.has(secret.name)) continue;
+
             const paths = Array.isArray(secret.targetPath) ? secret.targetPath : [secret.targetPath];
 
             const results = await Promise.all(paths.map(async (path) => {
@@ -276,10 +282,13 @@ export function SecretsPanel() {
                 exists: results.every(r => r.exists),
                 error: results.find(r => r.error)?.error
             };
+
+            // Mark this secret as checked
+            setCheckedFiles(prev => new Set([...prev, secret.name]));
         }
 
-        setFileStatuses(statuses);
-    }, [config, projectDir]);
+        setFileStatuses(prev => ({ ...prev, ...statuses }));
+    }, [config, projectDir, checkedFiles]);
 
     useEffect(() => {
         checkExistingFiles();
@@ -367,7 +376,7 @@ export function SecretsPanel() {
             );
 
             addLog(`Secret '${newSecret.name}' created successfully`, 'success');
-            
+
             // Create the secret config object
             const newSecretConfig = {
                 name: newSecret.name,
@@ -447,6 +456,35 @@ export function SecretsPanel() {
         }
     };
 
+    const loadConfigFile = useCallback(async () => {
+        if (!projectDir || loadAttempted.current) return;
+        
+        loadAttempted.current = true;
+        
+        try {
+            const response = await fetch('http://localhost:3001/api/config/load', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectDir })
+            });
+
+            if (response.ok) {
+                const config = await response.json();
+                if (config) {
+                    setConfig(config);
+                    setDefaultIndex(1);
+                    addLog('Secrets configuration loaded successfully', 'success');
+                }
+            }
+        } catch (error) {
+            console.debug('No existing secrets.config.json found');
+        }
+    }, [projectDir, addLog]);
+
+    useEffect(() => {
+        loadConfigFile();
+    }, [loadConfigFile]);
+
     return (
         <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
             <Heading size="md" mb={4}>Secrets Manager</Heading>
@@ -455,7 +493,7 @@ export function SecretsPanel() {
                 <GoogleAuthStatus />
             </Box>
 
-            <Tabs isFitted variant="enclosed">
+            <Tabs isFitted variant="enclosed" defaultIndex={defaultIndex}>
                 <TabList mb="1em">
                     <Tab>Environment Mode</Tab>
                     <Tab>Config Mode</Tab>
