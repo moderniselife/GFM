@@ -1,9 +1,10 @@
-import { Box, Button, Heading, VStack, HStack, Text, Input, Table, Thead, Tbody, Tr, Th, Td, IconButton, useToast, Menu, MenuButton, MenuList, MenuItem, Select, ButtonGroup, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Checkbox, useDisclosure } from "@chakra-ui/react";
-import { DeleteIcon, DownloadIcon, EditIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "@chakra-ui/icons";
+import { Box, Button, Heading, VStack, HStack, Text, Input, Table, Thead, Tbody, Tr, Th, Td, IconButton, useToast, Menu, MenuButton, MenuList, MenuItem, Select, ButtonGroup, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Checkbox, useDisclosure, Collapse } from "@chakra-ui/react";
+import { DeleteIcon, DownloadIcon, EditIcon, ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon } from "@chakra-ui/icons";
 import { useState, useEffect, useMemo } from "react";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
 import FirebaseManager from "../lib/FirebaseManager";
+import { Panel } from "./Panel";
 
 interface StorageFile {
     name: string;
@@ -21,6 +22,33 @@ interface PaginationData {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
 }
+
+// interface PanelProps {
+//     title: string;
+//     children: React.ReactNode;
+// }
+
+// export function Panel({ title, children }: PanelProps) {
+//     const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: true });
+
+//     return (
+//         <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height={isOpen ? "100%" : "auto"}>
+//             <HStack justify="space-between" mb={isOpen ? 4 : 0}>
+//                 <Heading size="md">{title}</Heading>
+//                 <IconButton
+//                     aria-label={isOpen ? "Collapse panel" : "Expand panel"}
+//                     icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+//                     onClick={onToggle}
+//                     size="sm"
+//                     variant="ghost"
+//                 />
+//             </HStack>
+//             <Collapse in={isOpen} animateOpacity>
+//                 {children}
+//             </Collapse>
+//         </Box>
+//     );
+// }
 
 export function StoragePanel() {
     const [currentPath, setCurrentPath] = useState<string[]>([]);
@@ -243,28 +271,23 @@ export function StoragePanel() {
     );
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" overflowX="auto">
+        <Panel title="Cloud Storage" buttons={<HStack justify="space-between">
+            <Text fontSize="sm">
+                Total Files: {pagination.totalFiles}
+            </Text>
+            <Select
+                size="sm"
+                width="120px"
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+            >
+                <option value={5}>5 per page</option>
+                <option value={10}>10 per page</option>
+                <option value={25}>25 per page</option>
+                <option value={50}>50 per page</option>
+                </Select>
+            </HStack>}>
             <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
-                    <Heading size="md">Cloud Storage</Heading>
-                    <HStack spacing={4}>
-                        <Text fontSize="sm">
-                            Total Files: {pagination.totalFiles}
-                        </Text>
-                        <Select
-                            size="sm"
-                            width="120px"
-                            value={rowsPerPage}
-                            onChange={(e) => setRowsPerPage(Number(e.target.value))}
-                        >
-                            <option value={5}>5 per page</option>
-                            <option value={10}>10 per page</option>
-                            <option value={25}>25 per page</option>
-                            <option value={50}>50 per page</option>
-                        </Select>
-                    </HStack>
-                </HStack>
-
                 <HStack>
                     <Button
                         size="sm"
@@ -381,7 +404,7 @@ export function StoragePanel() {
                 </HStack>
             </VStack>
             <MoveFileModal />
-        </Box>
+        </Panel>
     );
 }
 

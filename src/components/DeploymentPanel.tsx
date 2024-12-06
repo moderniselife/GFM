@@ -49,7 +49,7 @@ export function DeploymentPanel() {
 
         setLoading(true);
         deploymentRef.current = new AbortController();
-        
+
         try {
             await manager.deploy(options, deploymentRef.current.signal);
             toast({

@@ -3,6 +3,7 @@ import { ChevronUpIcon, ChevronDownIcon } from "@chakra-ui/icons";
 import { useLogs } from "../contexts/LogsContext";
 import { useRef, useEffect, useState } from "react";
 import { parseANSIString, parseTimestamp } from "../utils/logFormatter";
+import { Panel } from "./Panel";
 
 export function LogsPanel() {
   const { logs, clearLogs } = useLogs();
@@ -49,7 +50,7 @@ export function LogsPanel() {
   };
 
   return (
-    <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
+    <Panel title="Logs">
       <VStack align="stretch" spacing={4}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Heading size="md">Logs</Heading>
@@ -116,6 +117,6 @@ export function LogsPanel() {
           ))}
         </Box>
       </VStack>
-    </Box>
+    </Panel>
   );
 } 

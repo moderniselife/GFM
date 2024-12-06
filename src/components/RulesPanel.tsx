@@ -10,7 +10,7 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { xcodeLight, xcodeDark } from '@uiw/codemirror-theme-xcode';
 import { ErrorBoundary } from "./ErrorBoundary";
 import FirebaseManager from "../lib/FirebaseManager";
-
+import { Panel } from "./Panel";
 type RuleType = 'firestore' | 'storage';
 type EditorTheme = 'system' | 'github' | 'vscode' | 'xcode' | 'dracula';
 
@@ -148,7 +148,7 @@ export function RulesPanel() {
 
     if (!hasServiceAccount) {
         return (
-            <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%">
+            <Panel title="Security Rules Editor">
                 <VStack spacing={4} align="stretch">
                     <Heading size="md">Security Rules Editor</Heading>
                     <Alert status="warning">
@@ -161,44 +161,42 @@ export function RulesPanel() {
                         </Box>
                     </Alert>
                 </VStack>
-            </Box>
+            </Panel>
         );
     }
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
-            <HStack justify="space-between" mb={4}>
-                <Heading size="md">Security Rules Editor</Heading>
-                <HStack spacing={4}>
-                    <Select
-                        size="sm"
-                        value={editorTheme}
-                        onChange={(e) => setEditorTheme(e.target.value as EditorTheme)}
-                        width="150px"
-                    >
-                        <option value="system">System Theme</option>
-                        <option value="github">GitHub</option>
-                        <option value="vscode">VS Code</option>
-                        <option value="xcode">Xcode</option>
-                        <option value="dracula">Dracula</option>
-                    </Select>
-                    <Select
-                        value={ruleType}
-                        onChange={(e) => setRuleType(e.target.value as RuleType)}
-                        width="200px"
-                    >
-                        <option value="firestore">Firestore Rules</option>
-                        <option value="storage">Storage Rules</option>
-                    </Select>
-                    <Button
-                        colorScheme="blue"
-                        onClick={saveRules}
-                        isLoading={saving}
-                    >
-                        Save Rules
-                    </Button>
-                </HStack>
+        <Panel title="Security Rules Editor" buttons={
+            <HStack spacing={4}>
+                <Select
+                    size="sm"
+                    value={editorTheme}
+                    onChange={(e) => setEditorTheme(e.target.value as EditorTheme)}
+                    width="150px"
+                >
+                    <option value="system">System Theme</option>
+                    <option value="github">GitHub</option>
+                    <option value="vscode">VS Code</option>
+                    <option value="xcode">Xcode</option>
+                    <option value="dracula">Dracula</option>
+                </Select>
+                <Select
+                    value={ruleType}
+                    onChange={(e) => setRuleType(e.target.value as RuleType)}
+                    width="200px"
+                >
+                    <option value="firestore">Firestore Rules</option>
+                    <option value="storage">Storage Rules</option>
+                </Select>
+                <Button
+                    colorScheme="blue"
+                    onClick={saveRules}
+                    isLoading={saving}
+                >
+                    Save Rules
+                </Button>
             </HStack>
+        }>
 
             <Box flex="1" position="relative" borderWidth="1px" borderRadius="md">
                 {loading ? (
@@ -245,6 +243,6 @@ export function RulesPanel() {
                     </ErrorBoundary>
                 )}
             </Box>
-        </Box>
+        </Panel>
     );
 } 

@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
 import FirebaseManager from "../lib/FirebaseManager";
+import { Panel } from "./Panel";
 
 interface User {
   uid: string;
@@ -130,12 +131,8 @@ export function AuthPanel() {
   }, [projectDir]);
 
   return (
-    <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" overflowX="auto">
+    <Panel title="Authentication" buttons={loading && <Text as="span" ml={2} color="gray.500" fontSize="sm">(Loading...)</Text>}>
       <Flex justify="space-between" align="center" mb={4}>
-        <Heading size="md">
-          Authentication
-          {loading && <Text as="span" ml={2} color="gray.500" fontSize="sm">(Loading...)</Text>}
-        </Heading>
         <Text color="gray.500" fontSize="sm">
           Total Users: {pagination.totalUsers}
         </Text>
@@ -228,6 +225,6 @@ export function AuthPanel() {
           </Flex>
         </>
       )}
-    </Box>
+    </Panel>
   );
 } 

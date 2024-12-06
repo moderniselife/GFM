@@ -15,6 +15,7 @@ import {
 } from 'chart.js';
 import FirebaseManager from "../lib/FirebaseManager";
 import { ExternalLinkIcon } from "@chakra-ui/icons";
+import { Panel } from "./Panel";
 
 // Register ChartJS components
 ChartJS.register(
@@ -138,7 +139,7 @@ export function AnalyticsPanel() {
         const permissionError = getPermissionErrorDetails(error.message);
         if (permissionError) {
             return (
-                <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
+                <Panel title="Analytics Dashboard">
                     <Alert
                         status="warning"
                         variant="subtle"
@@ -170,11 +171,11 @@ export function AnalyticsPanel() {
                     >
                         Open Google Cloud Console
                     </Button>
-                </Box>
+                </Panel>
             );
         }
         return (
-            <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%">
+            <Panel title="Analytics Dashboard">
                 <VStack spacing={4} align="stretch">
                     <Heading size="md">Analytics Dashboard</Heading>
                     <Alert
@@ -206,7 +207,7 @@ export function AnalyticsPanel() {
                         </Box>
                     </Alert>
                 </VStack>
-            </Box>
+            </Panel>
         );
     }
 

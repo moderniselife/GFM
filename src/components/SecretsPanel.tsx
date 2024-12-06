@@ -10,7 +10,7 @@ import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
 import { GoogleAuthStatus } from './GoogleAuthStatus';
 import { CheckIcon, SearchIcon, WarningIcon, RepeatIcon, ExternalLinkIcon } from '@chakra-ui/icons';
-
+import { Panel } from './Panel';
 interface SecretConfig {
     name: string;
     secretKey: string;
@@ -458,9 +458,9 @@ export function SecretsPanel() {
 
     const loadConfigFile = useCallback(async () => {
         if (!projectDir || loadAttempted.current) return;
-        
+
         loadAttempted.current = true;
-        
+
         try {
             const response = await fetch('http://localhost:3001/api/config/load', {
                 method: 'POST',
@@ -486,8 +486,7 @@ export function SecretsPanel() {
     }, [loadConfigFile]);
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
-            <Heading size="md" mb={4}>Secrets Manager</Heading>
+        <Panel title="Secrets Manager">
 
             <Box mb={4}>
                 <GoogleAuthStatus />
@@ -753,6 +752,6 @@ export function SecretsPanel() {
                     </TabPanel>
                 </TabPanels>
             </Tabs>
-        </Box>
+        </Panel>
     );
 } 

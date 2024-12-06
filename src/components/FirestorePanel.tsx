@@ -5,6 +5,7 @@ import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
 import FirebaseManager from "../lib/FirebaseManager";
 import { JSONTree } from 'react-json-tree';
+import { Panel } from "./Panel";
 
 interface FirestoreDocument {
     id: string;
@@ -294,8 +295,7 @@ export function FirestorePanel() {
     }, [collection, currentPath]);
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" overflowX="auto">
-            <Heading size="md" mb={4}>Firestore Browser</Heading>
+        <Panel title="Firestore Browser">
 
             <VStack spacing={4} align="stretch">
                 <HStack>
@@ -440,6 +440,6 @@ export function FirestorePanel() {
                     </>
                 )}
             </VStack>
-        </Box>
+        </Panel>
     );
 } 
