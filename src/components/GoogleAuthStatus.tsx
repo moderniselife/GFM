@@ -1,6 +1,7 @@
 import { Box, Button, Text, VStack, HStack, useToast, Link } from "@chakra-ui/react";
 import { ExternalLinkIcon } from '@chakra-ui/icons';
 import { useState, useEffect } from "react";
+import { Panel } from "./Panel";
 
 export function GoogleAuthStatus() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -40,11 +41,11 @@ export function GoogleAuthStatus() {
             const response = await fetch('http://localhost:3001/api/gcloud/login', {
                 method: 'POST'
             });
-            
+
             if (!response.ok) {
                 throw new Error('Login failed');
             }
-            
+
             // Wait a moment before checking status to allow for browser auth
             setTimeout(async () => {
                 await checkAuthStatus();
@@ -54,7 +55,7 @@ export function GoogleAuthStatus() {
                     duration: 3000,
                 });
             }, 1000);
-            
+
         } catch (error) {
             toast({
                 title: "Authentication failed",
@@ -78,11 +79,11 @@ export function GoogleAuthStatus() {
             const response = await fetch('http://localhost:3001/api/gcloud/setup-adc', {
                 method: 'POST'
             });
-            
+
             if (!response.ok) {
                 throw new Error('ADC setup failed');
             }
-            
+
             // Wait a moment before checking status to allow for browser auth
             setTimeout(async () => {
                 await checkAuthStatus();
@@ -92,7 +93,7 @@ export function GoogleAuthStatus() {
                     duration: 3000,
                 });
             }, 1000);
-            
+
         } catch (error) {
             toast({
                 title: "ADC setup failed",
@@ -104,54 +105,101 @@ export function GoogleAuthStatus() {
     };
 
     if (checking) {
-        return <Text>Checking authentication status...</Text>;
+        return (
+            <Box p={4} borderRadius="lg" boxShadow="sm" bg="white">
+                <Text display="flex" alignItems="center" gap={2}>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Checking authentication status...
+                </Text>
+            </Box>
+        );
     }
 
     return (
-        <VStack spacing={2} align="stretch">
-            <Box>
-                <Text>
-                    Google Cloud Status: {isAuthenticated ? 
-                        "✅ Authenticated" : 
-                        "❌ Not authenticated"}
-                </Text>
-                <Text>
-                    ADC Status: {isADCConfigured ? 
-                        "✅ Configured" : 
-                        "❌ Not configured"}
-                </Text>
-            </Box>
-            <HStack spacing={2}>
-                {!isAuthenticated && (
-                    <Button 
-                        colorScheme="blue" 
-                        onClick={handleLogin}
-                        size="sm"
+        <Panel title="Authentication Status" noShadow noBorder>
+            <VStack spacing={4} align="stretch">
+                <Box>
+                    <VStack spacing={3} align="stretch">
+                        <HStack
+                            p={3}
+                            bg={isAuthenticated ? 'green.50' : 'red.50'}
+                            borderRadius="md"
+                        >
+                            <Box fontSize="xl">
+                                {isAuthenticated ? '🔒' : '🔓'}
+                            </Box>
+                            <Box flex="1">
+                                <Text fontWeight="medium">
+                                    Google Cloud Status
+                                </Text>
+                                <Text fontSize="sm" color={isAuthenticated ? 'green.600' : 'red.600'}>
+                                    {isAuthenticated ? 'Authenticated' : 'Not authenticated'}
+                                </Text>
+                            </Box>
+                        </HStack>
+
+                        <HStack
+                            p={3}
+                            bg={isADCConfigured ? 'green.50' : 'red.50'}
+                            borderRadius="md"
+                        >
+                            <Box fontSize="xl">
+                                {isADCConfigured ? '⚙️' : '⚠️'}
+                            </Box>
+                            <Box flex="1">
+                                <Text fontWeight="medium">
+                                    ADC Status
+                                </Text>
+                                <Text fontSize="sm" color={isADCConfigured ? 'green.600' : 'red.600'}>
+                                    {isADCConfigured ? 'Configured' : 'Not configured'}
+                                </Text>
+                            </Box>
+                        </HStack>
+                    </VStack>
+                </Box>
+
+                <HStack spacing={2} justify="center">
+                    {!isAuthenticated && (
+                        <Button
+                            colorScheme="blue"
+                            onClick={handleLogin}
+                            size="md"
+                            leftIcon={<span>🔑</span>}
+                            w="full"
+                        >
+                            Login to Google Cloud
+                        </Button>
+                    )}
+                    {isAuthenticated && !isADCConfigured && (
+                        <Button
+                            colorScheme="green"
+                            onClick={handleSetupADC}
+                            size="md"
+                            leftIcon={<span>⚙️</span>}
+                            w="full"
+                        >
+                            Setup ADC
+                        </Button>
+                    )}
+                </HStack>
+
+                <VStack spacing={2} pt={2}>
+                    <Text fontSize="sm" color="gray.500">
+                        🌐 Authentication will open in your default browser
+                    </Text>
+                    <Link
+                        href="https://cloud.google.com/docs/authentication/provide-credentials-adc"
+                        isExternal
+                        color="blue.500"
+                        fontSize="sm"
+                        display="flex"
+                        alignItems="center"
                     >
-                        Login to Google Cloud
-                    </Button>
-                )}
-                {isAuthenticated && !isADCConfigured && (
-                    <Button 
-                        colorScheme="green" 
-                        onClick={handleSetupADC}
-                        size="sm"
-                    >
-                        Setup ADC
-                    </Button>
-                )}
-            </HStack>
-            <Text fontSize="sm" color="gray.500">
-                Note: Authentication will open in your default browser
-            </Text>
-            <Link 
-                href="https://cloud.google.com/docs/authentication/provide-credentials-adc" 
-                isExternal
-                color="blue.500"
-                fontSize="sm"
-            >
-                Learn more about Application Default Credentials <ExternalLinkIcon mx="2px" />
-            </Link>
-        </VStack>
+                        📚 Learn more about Application Default Credentials
+                        <ExternalLinkIcon ml={1} />
+                    </Link>
+                </VStack>
+            </VStack>
+        </Panel>
     );
 } 
