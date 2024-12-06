@@ -13,65 +13,116 @@ A desktop application built with React and Electron for managing Firebase projec
 - 🛠 Emulator Controls
 - 🔑 Environment Secrets Management
 - 📝 Real-time Logging
-- and more!
+- 📄 Rules Panel
+  - Edit and deploy Firestore and Storage security rules
+  - Syntax highlighting with multiple theme options
+  - Real-time validation and error checking
+  - Auto-completion and bracket matching
+  - Dark/Light theme support
+  - Support for multiple rule types:
+    - Firestore Rules
+    - Storage Rules
+- 🔧 Settings Panel
+  - **Service Account Management**
+    - Upload multiple service account keys
+    - Set active service account
+    - Delete service accounts
+    - View service account details and status
+  - **Google Analytics Configuration**
+    - Configure GA4 Measurement ID
+    - Manage analytics settings
+    - Enable/disable analytics features
+- 📊 Analytics Panel
+  - View real-time analytics data
+  - Customizable time ranges
+  - User engagement metrics
+  - Error handling for:
+    - API permissions
+    - Configuration issues
+    - Service account setup
+  - Direct links to enable required APIs
+- 📂 Storage Panel
+  - Browse and manage Firebase Storage
+  - Upload and download files
+  - Create and manage folders
+  - View and edit storage rules
+  - Manage file permissions
+- 🔐 Auth Panel
+  - Manage Firebase Authentication
+  - View and manage users
+  - Configure auth providers
+  - Monitor authentication status
+  - User role management
+- 📊 Firestore Panel
+  - Browse and manage Firestore database
+  - Create and edit documents
+  - Run queries
+  - Manage collections
+  - Import/Export data
 
-### Rules Panel
+## Coming Soon
 
-- Edit and deploy Firestore and Storage security rules
-- Syntax highlighting with multiple theme options
-- Real-time validation and error checking
-- Auto-completion and bracket matching
-- Dark/Light theme support
-- Support for multiple rule types:
-  - Firestore Rules
-  - Storage Rules
+- 📦 Hosting Panel
 
-### Settings Panel
+  - Deploy and manage web applications
 
-- **Service Account Management**
-  - Upload multiple service account keys
-  - Set active service account
-  - Delete service accounts
-  - View service account details and status
-- **Google Analytics Configuration**
-  - Configure GA4 Measurement ID
-  - Manage analytics settings
-  - Enable/disable analytics features
+- 🔄 Remote Config Panel
 
-### Analytics Panel
+  - Manage feature flags and app configurations
 
-- View real-time analytics data
-- Customizable time ranges
-- User engagement metrics
-- Error handling for:
-  - API permissions
-  - Configuration issues
-  - Service account setup
-- Direct links to enable required APIs
+- 🔧 Extensions Panel
 
-### Storage Panel
+  - Browse and manage Firebase Extensions
 
-- Browse and manage Firebase Storage
-- Upload and download files
-- Create and manage folders
-- View and edit storage rules
-- Manage file permissions
+- 🤖 ML Panel
 
-### Auth Panel
+  - Train and deploy machine learning models
 
-- Manage Firebase Authentication
-- View and manage users
-- Configure auth providers
-- Monitor authentication status
-- User role management
+- 🔐 App Check Panel
 
-### Firestore Panel
+  - Manage app security and verification
 
-- Browse and manage Firestore database
-- Create and edit documents
-- Run queries
-- Manage collections
-- Import/Export data
+- 📈 Performance Panel
+
+  - Monitor app performance metrics
+
+- 🎲 A/B Testing Panel
+
+  - Create and manage experiments
+
+- 💥 Crashlytics Panel
+
+  - Track and analyze app crashes
+
+- 🧪 Test Panel
+
+  - Real-time Playwright test execution and monitoring
+  - Detailed test results with error reporting
+  - Visual test status indicators
+  - Automatic test discovery and organization
+  - Quick navigation to failed tests
+
+- 📊 Usage Analytics
+
+  - Daily Firebase service consumption metrics
+  - Resource usage tracking and alerts
+  - Cost estimation and budget monitoring
+  - Usage trend analysis and reporting
+
+- 📁 File Management
+
+  - Intelligent file versioning system
+  - Automatic backup of moved files
+  - Version history with .revision naming
+  - Easy rollback capabilities
+
+- 💻 Cloud Functions Panel
+
+  - Real-time function logs and monitoring
+  - Function deployment status
+  - Error tracking and debugging
+  - Performance metrics and insights
+  - Cold start analysis
 
 ## Prerequisites
 
@@ -79,24 +130,25 @@ A desktop application built with React and Electron for managing Firebase projec
 - Firebase CLI installed globally (`npm install -g firebase-tools`)
 - Firebase project already initialized
 - Google Cloud credentials configured
-- 
-- 1. Clone the repository:
+
+1. Clone the repository:
 
 ```bash
-   git clone https://github.com/moderniselife/GFM.git
-   cd GFM
+git clone https://github.com/moderniselife/GFM.git
+cd GFM
 ```
 
 2. Install dependencies:
 
-   ```bash
-   bun install
-   ```
+```bash
+bun install
+```
+
 3. Start the development server:
 
-   ```bash
-   bun run start
-   ```
+```bash
+bun run start
+```
 
 ## Development
 
