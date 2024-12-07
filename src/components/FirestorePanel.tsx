@@ -1,4 +1,4 @@
-import { Box, Heading, VStack, HStack, Input, Button, Table, Thead, Tbody, Tr, Th, Td, Text, useToast, IconButton, Flex, Select, ButtonGroup } from "@chakra-ui/react";
+import { Box, Heading, VStack, HStack, Input, Button, Table, Thead, Tbody, Tr, Th, Td, Text, useToast, IconButton, Flex, Select, ButtonGroup, Editable, EditableInput, EditablePreview } from "@chakra-ui/react";
 import { ChevronRightIcon, DeleteIcon, EditIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import { useState, useEffect, useMemo } from "react";
 import { useProject } from "../contexts/ProjectContext";
@@ -118,6 +118,138 @@ function ExpandableRow({ doc, onNavigate, onDelete }: ExpandableRowProps) {
             )}
         </>
     );
+}
+
+interface EditableJSONProps {
+    data: any;
+    path: string[];
+    onUpdate: (newValue: any) => void;
+}
+
+function EditableJSON({ data, path, onUpdate }: EditableJSONProps) {
+    const [collapsed, setCollapsed] = useState<{ [key: string]: boolean }>(() => {
+        const initialState: { [key: string]: boolean } = {};
+
+        const initializeCollapsed = (obj: any, currentPath: string[] = []) => {
+            if (typeof obj === 'object' && obj !== null) {
+                // Don't collapse root level (empty path)
+                const pathKey = currentPath.join('.');
+                if (currentPath.length > 0) {
+                    initialState[pathKey] = true;
+                }
+
+                // Recursively process nested objects
+                Object.entries(obj).forEach(([key, value]) => {
+                    initializeCollapsed(value, [...currentPath, key]);
+                });
+            }
+        };
+
+        initializeCollapsed(data);
+        return initialState;
+    });
+
+    const handleValueChange = (newValue: string, currentPath: string[]) => {
+        const updatedData = { ...data };
+        let current = updatedData;
+
+        // Navigate to the nested property
+        for (let i = 0; i < currentPath.length - 1; i++) {
+            current = current[currentPath[i]];
+        }
+
+        // Update the value, attempting to parse as JSON if possible
+        try {
+            current[currentPath[currentPath.length - 1]] = JSON.parse(newValue);
+        } catch {
+            current[currentPath[currentPath.length - 1]] = newValue;
+        }
+
+        onUpdate(updatedData);
+    };
+
+    const toggleCollapse = (pathKey: string) => {
+        setCollapsed(prev => ({
+            ...prev,
+            [pathKey]: !prev[pathKey]
+        }));
+    };
+
+    const renderValue = (value: any, currentPath: string[]) => {
+        if (value === null) return "null";
+
+        if (typeof value === "object") {
+            const pathKey = currentPath.join('.');
+            const isCollapsed = collapsed[pathKey];
+
+            return (
+                <Box>
+                    <Box display="flex" alignItems="center">
+                        <IconButton
+                            aria-label="Toggle expand"
+                            icon={isCollapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
+                            size="xs"
+                            variant="ghost"
+                            onClick={() => toggleCollapse(pathKey)}
+                        />
+                        <Text color="orange.500">
+                            {Array.isArray(value) ? '[' : '{'}
+                            {isCollapsed && (
+                                <Text as="span" color="gray.500">
+                                    {' '}
+                                    {Array.isArray(value)
+                                        ? `${value.length} items`
+                                        : `${Object.keys(value).length} keys`
+                                    }
+                                </Text>
+                            )}
+                            {isCollapsed && (Array.isArray(value) ? ']' : '}')}
+                        </Text>
+                    </Box>
+
+                    {!isCollapsed && (
+                        <>
+                            <VStack align="stretch" pl={4} spacing={0}>
+                                {Object.entries(value).map(([key, val]) => (
+                                    <Box key={key}>
+                                        {!isCollapsed ? (
+                                            <>
+                                                <Text color="orange.500" display="inline">{key}: </Text>
+                                                {renderValue(val, [...currentPath, key])}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Text color="orange.500">{key}: </Text>
+                                                <Box pl={4}>
+                                                    {renderValue(val, [...currentPath, key])}
+                                                </Box>
+                                            </>
+                                        )}
+                                    </Box>
+                                ))}
+                            </VStack>
+                            <Text color="orange.500">
+                                {Array.isArray(value) ? ']' : '}'}
+                            </Text>
+                        </>
+                    )}
+                </Box>
+            );
+        }
+
+        return (
+            <Editable
+                defaultValue={String(value)}
+                onSubmit={(newValue) => handleValueChange(newValue, currentPath)}
+                display="inline-block"
+            >
+                <EditablePreview />
+                <EditableInput />
+            </Editable>
+        );
+    };
+
+    return <Box>{renderValue(data, path)}</Box>;
 }
 
 export function FirestorePanel() {
@@ -288,6 +420,42 @@ export function FirestorePanel() {
         }
     };
 
+    const handleDocumentUpdate = async (newData: any) => {
+        try {
+            const projectId = await manager.getCurrentProjectId();
+            if (!projectId) {
+                throw new Error('No active project found');
+            }
+
+            const path = [...currentPath, collection].join('/');
+            const response = await fetch(`http://localhost:3001/api/firebase/firestore/update?projectId=${encodeURIComponent(projectId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path, data: newData }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update document');
+            }
+
+            toast({
+                title: 'Success',
+                description: 'Document updated successfully',
+                status: 'success',
+                duration: 3000,
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error occurred';
+            toast({
+                title: 'Error updating document',
+                description: message,
+                status: 'error',
+                duration: 5000,
+            });
+        }
+    };
+
     useEffect(() => {
         if (collection) {
             fetchData();
@@ -334,11 +502,10 @@ export function FirestorePanel() {
                                 backgroundColor="gray.50"
                                 p={4}
                             >
-                                <JSONTree
+                                <EditableJSON
                                     data={documentData?.data || {}}
-                                    theme={jsonTreeTheme}
-                                    shouldExpandNode={() => true}
-                                    hideRoot
+                                    path={[]}
+                                    onUpdate={handleDocumentUpdate}
                                 />
                             </Box>
 
