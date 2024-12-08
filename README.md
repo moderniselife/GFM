@@ -131,6 +131,8 @@ A desktop application built with React and Electron for managing Firebase projec
 - Firebase project already initialized
 - Google Cloud credentials configured
 
+> Google Cloud install guide here [https://cloud.google.com/sdk/docs/install]()
+
 1. Clone the repository:
 
 ```bash
