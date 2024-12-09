@@ -24,6 +24,21 @@ class FirebaseManager {
     this.addLog?.(message, type);
   }
 
+  public async getFirebaseConfig(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/firebase/config?dir=${encodeURIComponent(this.projectDir)}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to read firebase configuration');
+      }
+      const { config } = await response.json();
+      return config;
+    } catch (error) {
+      this.log(`Failed to read firebase configuration: ${error}`, 'error');
+      throw error;
+    }
+  }
+
   public async getCurrentProject(): Promise<string> {
     this.log('Fetching current project...');
     try {
@@ -144,7 +159,101 @@ class FirebaseManager {
     }
   }
 
-  public async deploy(options: { [key: string]: boolean }, signal?: AbortSignal): Promise<void> {
+  // public async deploy(options: { [key: string]: boolean }, signal?: AbortSignal): Promise<void> {
+  //   this.log('Starting deployment...');
+  //   let ws: WebSocket | null = null;
+
+  //   try {
+  //     if (!this.currentProjectId) {
+  //       this.currentProjectId = await this.getCurrentProject();
+  //       if (!this.currentProjectId) {
+  //         throw new Error('No project selected. Please select a project first.');
+  //       }
+  //     }
+
+  //     const wsUrl = this.baseUrl.replace('http', 'ws');
+  //     ws = new WebSocket(`${wsUrl}/gfm/logs`);
+  //     const clientId = Math.random().toString(36).substring(7);
+
+  //     // Set up abort handler
+  //     if (signal) {
+  //       signal.addEventListener('abort', () => {
+  //         ws?.close();
+  //         throw new DOMException('Deployment aborted by user', 'AbortError');
+  //       });
+  //     }
+
+  //     ws.onmessage = (event) => {
+  //       try {
+  //         const data = JSON.parse(event.data);
+  //         switch (data.type) {
+  //           case 'log':
+  //             this.log(data.message, data.level === 'error' ? 'error' : 'info');
+  //             break;
+  //           case 'complete':
+  //             this.log(data.message, 'success');
+  //             break;
+  //           case 'error':
+  //             this.log(data.message, 'error');
+  //             break;
+  //           default:
+  //             console.log('Unknown message type:', data);
+  //         }
+  //       } catch (error) {
+  //         console.error('Error processing WebSocket message:', error);
+  //       }
+  //     };
+
+  //     await new Promise<void>((resolve) => {
+  //       ws.onopen = () => {
+  //         ws.send(JSON.stringify({ type: 'register', clientId }));
+  //         resolve();
+  //       };
+  //     });
+
+  //     const response = await fetch(`${this.baseUrl}/firebase/deploy?dir=${encodeURIComponent(this.projectDir)}`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         options,
+  //         projectId: this.currentProjectId,
+  //         clientId
+  //       }),
+  //       signal, // Add the abort signal here
+  //     });
+
+  //     if (!response.ok) {
+  //       ws.close();
+  //       const error = await response.json();
+  //       throw new Error(error.error || 'Deployment failed');
+  //     }
+
+  //     await new Promise<void>((resolve, reject) => {
+  //       const timeout = setTimeout(() => {
+  //         ws.close();
+  //         reject(new Error('Deployment timed out'));
+  //       }, 300000);
+
+  //       ws.onclose = () => {
+  //         clearTimeout(timeout);
+  //         resolve();
+  //       };
+  //     });
+
+  //   } catch (error) {
+  //     ws?.close();
+  //     this.log(`Deployment failed: ${error}`, 'error');
+  //     throw error;
+  //   }
+  // }
+
+  public async deploy(
+    options: { [key: string]: boolean },
+    signal?: AbortSignal,
+    targets?: { [key: string]: string[] }
+  ): Promise<void> {
     this.log('Starting deployment...');
     let ws: WebSocket | null = null;
 
@@ -167,6 +276,7 @@ class FirebaseManager {
           throw new DOMException('Deployment aborted by user', 'AbortError');
         });
       }
+
 
       ws.onmessage = (event) => {
         try {
@@ -204,9 +314,10 @@ class FirebaseManager {
         body: JSON.stringify({
           options,
           projectId: this.currentProjectId,
-          clientId
+          clientId,
+          targets
         }),
-        signal, // Add the abort signal here
+        signal,
       });
 
       if (!response.ok) {

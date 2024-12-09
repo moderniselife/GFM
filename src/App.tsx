@@ -16,6 +16,7 @@ import { RulesPanel } from './components/RulesPanel';
 import { StoragePanel } from './components/StoragePanel';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { GoogleAuthStatusPanel } from './components/GoogleAuthStatusPanel';
+import { AdvancedDeploymentPanel } from "./components/AdvancedDeploymentPanel";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
             <SimpleGrid columns={3} spacing={8}>
               <DependencyInstaller />
               <DeploymentPanel />
+              <AdvancedDeploymentPanel />
               <EmulatorPanel />
             </SimpleGrid>
 

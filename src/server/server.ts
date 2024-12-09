@@ -231,10 +231,127 @@ app.post('/api/firebase/install-dependencies', errorHandler(async (req, res) => 
   }
 }));
 
+app.get('/api/firebase/config', errorHandler(async (req, res) => {
+  try {
+    const dir = req.query.dir as string;
+    const configPath = join(dir, 'firebase.json');
+
+    if (!existsSync(configPath)) {
+      throw new Error('firebase.json not found');
+    }
+
+    const configContent = readFileSync(configPath, 'utf8');
+    const config = JSON.parse(configContent);
+
+    res.json({ config });
+  } catch (error) {
+    console.error('Error reading firebase.json:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to read firebase configuration'
+    });
+  }
+}));
+
 // Deploy to Firebase
+// app.post('/api/firebase/deploy', errorHandler(async (req, res) => {
+//   try {
+//     const { options, projectId, clientId } = req.body;
+//     const dir = req.query.dir as string;
+
+//     // Find the corresponding WebSocket client
+//     const wsClient = Array.from(wss.clients).find(
+//       (client: ExtendedWebSocket) => client.clientId === clientId
+//     ) as ExtendedWebSocket;
+
+//     if (!wsClient) {
+//       throw new Error('WebSocket connection not found');
+//     }
+
+//     // First switch to the correct project
+//     if (projectId) {
+//       execCommand(`firebase use ${projectId}`, dir);
+//     }
+
+//     let deployCmd = 'firebase deploy';
+
+//     if (!options.all) {
+//       let deployOptions = Object.entries(options)
+//         .filter(([key, value]) => value === true && key !== 'all')
+//         .map(([key]) => {
+//           if (key === 'hosting') {
+//             return `hosting:${projectId}`;
+//           }
+//           return key;
+//         })
+//         .join(',');
+
+//       if (deployOptions) {
+//         deployCmd += ` --only ${deployOptions}`;
+//       }
+//     }
+
+//     // Use spawn instead of execSync to get real-time output
+//     const deployProcess = spawn(deployCmd, {
+//       shell: true,
+//       cwd: dir || process.cwd()
+//     });
+
+//     // Send initial response
+//     res.json({ message: 'Deployment started', command: deployCmd });
+
+//     // Handle stdout
+//     deployProcess.stdout.on('data', (data) => {
+//       const message = data.toString().trim();
+//       if (message) {
+//         wsClient.send(JSON.stringify({
+//           type: 'log',
+//           message,
+//           level: 'info'
+//         }));
+//       }
+//     });
+
+//     // Handle stderr
+//     deployProcess.stderr.on('data', (data) => {
+//       const message = data.toString().trim();
+//       if (message) {
+//         wsClient.send(JSON.stringify({
+//           type: 'log',
+//           message,
+//           level: 'error'
+//         }));
+//       }
+//     });
+
+//     // Handle process completion
+//     deployProcess.on('close', (code) => {
+//       if (code === 0) {
+//         wsClient.send(JSON.stringify({
+//           type: 'complete',
+//           message: 'Deployment completed successfully'
+//         }));
+//       } else {
+//         wsClient.send(JSON.stringify({
+//           type: 'error',
+//           message: `Deployment failed with code ${code}`
+//         }));
+//       }
+//       wsClient.close();
+//     });
+
+//   } catch (error) {
+//     console.error('Deploy error:', error);
+//     const errorMessage = error instanceof Error ? error.message : 'Deployment failed';
+//     res.status(500).json({
+//       error: errorMessage,
+//       type: 'deployment_error'
+//     });
+//   }
+// }));
+
 app.post('/api/firebase/deploy', errorHandler(async (req, res) => {
   try {
-    const { options, projectId, clientId } = req.body;
+    const { options, projectId, clientId, targets } = req.body;
     const dir = req.query.dir as string;
 
     // Find the corresponding WebSocket client
@@ -254,29 +371,44 @@ app.post('/api/firebase/deploy', errorHandler(async (req, res) => {
     let deployCmd = 'firebase deploy';
 
     if (!options.all) {
-      let deployOptions = Object.entries(options)
-        .filter(([key, value]) => value === true && key !== 'all')
-        .map(([key]) => {
-          if (key === 'hosting') {
-            return `hosting:${projectId}`;
-          }
-          return key;
-        })
-        .join(',');
+      const deployTargets: string[] = [];
 
-      if (deployOptions) {
-        deployCmd += ` --only ${deployOptions}`;
+      // Handle hosting targets
+      if (options.hosting && targets?.hosting) {
+        targets.hosting.forEach((target: string) => {
+          deployTargets.push(`hosting:${target}`);
+        });
+      } else if (options.hosting) {
+        deployTargets.push(`hosting:${projectId}`);
+      }
+
+      // Handle functions targets
+      if (options.functions && targets?.functions) {
+        targets.functions.forEach((target: string) => {
+          deployTargets.push(`functions:${target}`);
+        });
+      } else if (options.functions) {
+        deployTargets.push('functions');
+      }
+
+      // Handle other resources
+      if (options.storage) deployTargets.push('storage');
+      if (options.firestore) deployTargets.push('firestore');
+      if (options.rules) deployTargets.push('rules');
+
+      if (deployTargets.length > 0) {
+        deployCmd += ` --only ${deployTargets.join(',')}`;
       }
     }
+
+    // Send initial response
+    res.json({ message: 'Deployment started', command: deployCmd });
 
     // Use spawn instead of execSync to get real-time output
     const deployProcess = spawn(deployCmd, {
       shell: true,
       cwd: dir || process.cwd()
     });
-
-    // Send initial response
-    res.json({ message: 'Deployment started', command: deployCmd });
 
     // Handle stdout
     deployProcess.stdout.on('data', (data) => {
@@ -986,7 +1118,7 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
     }, uniqueAppName);
 
     const db = getFirestore(app);
-    
+
     const segments = path.split('/').filter(Boolean);
     const isDocumentPath = segments.length % 2 === 0;
 
@@ -995,7 +1127,7 @@ app.get('/api/firebase/firestore/get', errorHandler(async (req, res) => {
       // Handle document path
       const docRef = db.doc(path);
       const doc = await docRef.get();
-      
+
       if (!doc.exists) {
         throw new Error('Document does not exist');
       }
@@ -1912,15 +2044,15 @@ app.post('/api/config/load', errorHandler(async (req, res) => {
 }));
 
 app.post('/api/firebase/login', errorHandler(async (req, res) => {
-    try {
-        execCommand('firebase login');
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Firebase login error:', error);
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Firebase login failed'
-        });
-    }
+  try {
+    execCommand('firebase login');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Firebase login error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Firebase login failed'
+    });
+  }
 }));
 
 // Add this new endpoint for updating Firestore documents
