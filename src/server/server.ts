@@ -60,8 +60,40 @@ const execCommand = (command: string, dir?: string) => {
 };
 
 // WebSocket connection handling
+// wss.on('connection', (ws: any) => {
+//   console.log('New WebSocket client connected');
+
+//   ws.on('message', (message: string) => {
+//     try {
+//       const data = JSON.parse(message.toString());
+//       if (data.type === 'register') {
+//         ws.clientId = data.clientId;
+//         console.log('Client registered with ID:', data.clientId);
+//       }
+//     } catch (error) {
+//       console.error('Error processing WebSocket message:', error);
+//     }
+//   });
+
+//   ws.on('close', () => {
+//     console.log('Client disconnected:', ws.clientId);
+//   });
+// });
+
+// Set up a ping interval in milliseconds (e.g., 60,000ms = 1 minute)
+const PING_INTERVAL = 60000;
+
 wss.on('connection', (ws: any) => {
   console.log('New WebSocket client connected');
+
+  // Add a property to track if the connection is alive
+  ws.isAlive = true;
+
+  // When receiving a pong, mark the connection as alive
+  ws.on('pong', () => {
+    console.log('Client pong received');
+    ws.isAlive = true;
+  });
 
   ws.on('message', (message: string) => {
     try {
@@ -79,6 +111,20 @@ wss.on('connection', (ws: any) => {
     console.log('Client disconnected:', ws.clientId);
   });
 });
+
+// Set up a server-wide interval to send pings
+const interval = setInterval(() => {
+  wss.clients.forEach((ws: any) => {
+    if (!ws.isAlive) {
+      // If the client hasn't responded to the last ping, terminate the connection
+      return ws.terminate();
+    }
+
+    // Mark connection as not alive until we get a pong
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, PING_INTERVAL);
 
 // Store service accounts by project ID
 const serviceAccounts = new Map<string, ServiceAccount>();
