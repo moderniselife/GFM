@@ -1,5 +1,6 @@
-import { Container, Box, Button, HStack, useToast, ChakraProvider } from "@chakra-ui/react";
-import { RepeatIcon } from "@chakra-ui/icons";
+import { Box, Button, HStack, useToast, Heading, Text, useColorMode, IconButton } from "@chakra-ui/react";
+import { useEffect } from 'react';
+import { RepeatIcon, MoonIcon, SunIcon } from "@chakra-ui/icons";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import { Layout } from 'react-grid-layout';
 import { useLayout } from './contexts/LayoutContext';
@@ -28,7 +29,13 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function App() {
   const { layouts, setLayouts, saveLayout, resetLayout } = useLayout();
+  const { colorMode, toggleColorMode } = useColorMode();
   const toast = useToast();
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('color-scheme', colorMode === 'dark' ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', colorMode === 'dark');
+  }, [colorMode]);
 
   const handleLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     setLayouts(allLayouts);
@@ -55,24 +62,75 @@ export default function App() {
   return (
     <Provider>
       <LogsProvider>
-        <Box p={4}>
-          <HStack spacing={4} mb={4}>
-            <Button
-              leftIcon={<RepeatIcon />}
-              colorScheme="blue"
-              onClick={handleSaveLayout}
-            >
-              Save Layout
-            </Button>
-            <Button
-              leftIcon={<RepeatIcon />}
-              variant="outline"
-              onClick={handleResetLayout}
-            >
-              Reset Layout
-            </Button>
-          </HStack>
+        <Box 
+          bg="blue.500" 
+          color="white" 
+          p={4} 
+          mb={4}
+          borderBottom="4px solid"
+          borderColor="blue.600"
+          position="sticky"
+          top={0}
+          zIndex={100}
+        >
+          <HStack 
+            justify="space-between" 
+            align="center" 
+            maxW="container.xl" 
+            mx="auto" 
+            px={4}
+            height="40px"
+            position="relative"
+          >
+            {/* Left side */}
+            <HStack spacing={4} position="absolute" left={4}>
+              <Button
+                leftIcon={<RepeatIcon />}
+                colorScheme="whiteAlpha"
+                onClick={handleSaveLayout}
+                size="sm"
+              >
+                Save Layout
+              </Button>
+              <Button
+                leftIcon={<RepeatIcon />}
+                colorScheme="whiteAlpha"
+                variant="outline"
+                onClick={handleResetLayout}
+                size="sm"
+              >
+                Reset Layout
+              </Button>
+            </HStack>
 
+            {/* Center */}
+            <Heading 
+              size="lg" 
+              textAlign="center" 
+              width="100%"
+              position="absolute"
+              left="50%"
+              transform="translateX(-50%)"
+              pointerEvents="none"
+            >
+              Golden Firebase Manager
+            </Heading>
+
+            {/* Right side */}
+            <HStack spacing={4} position="absolute" right={4}>
+              <IconButton
+                aria-label="Toggle dark mode"
+                icon={colorMode === 'dark' ? <SunIcon /> : <MoonIcon />}
+                colorScheme="whiteAlpha"
+                variant="outline"
+                size="sm"
+                onClick={toggleColorMode}
+              />
+            </HStack>
+          </HStack>
+        </Box>
+
+        <Box p={4}>
           <ResponsiveGridLayout
             className="layout"
             layouts={layouts}

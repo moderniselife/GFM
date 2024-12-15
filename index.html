@@ -8,6 +8,31 @@
   <meta name="description" content="Golden Firebase Manager - A desktop application for managing Firebase projects, deployments, emulators, and secrets">
   <meta name="theme-color" content="#4299E1">
   
+  <script>
+    (function() {
+      const colorMode = localStorage.getItem('chakra-ui-color-mode');
+      document.documentElement.style.setProperty('color-scheme', colorMode === 'dark' ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', colorMode === 'dark');
+    })();
+  </script>
+  
+  <style>
+    :root {
+      color-scheme: light;
+    }
+    :root.dark {
+      color-scheme: dark;
+    }
+    body {
+      background-color: var(--chakra-colors-white);
+      color: var(--chakra-colors-gray-800);
+    }
+    .dark body {
+      background-color: var(--chakra-colors-gray-900);
+      color: var(--chakra-colors-white);
+    }
+  </style>
+  
   <!-- Security headers -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ws://localhost:3001 http://localhost:3001; img-src 'self' data:; style-src 'self' 'unsafe-inline';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">

@@ -35,7 +35,7 @@ html {
   background-color: var(--chakra-colors-gray-100);
 }
 
-[data-theme="dark"] .dragHandle:hover {
+[data-color-mode="dark"] .dragHandle:hover {
   background-color: var(--chakra-colors-gray-600);
 }
 
@@ -69,6 +69,52 @@ html {
   background-color: var(--chakra-colors-gray-100);
 }
 
-[data-theme="dark"] .dragHandle:hover {
+[data-color-mode="dark"] .dragHandle:hover {
   background-color: var(--chakra-colors-gray-600);
+}
+
+/* Dark mode styles */
+:root.dark {
+  background-color: var(--chakra-colors-gray-900);
+  color: var(--chakra-colors-white);
+}
+
+:root.dark .react-grid-item {
+  background-color: var(--chakra-colors-gray-800);
+  border-color: var(--chakra-colors-gray-600);
+}
+
+:root.dark .dragHandle {
+  background-color: var(--chakra-colors-gray-700);
+  color: var(--chakra-colors-white);
+}
+
+:root.dark .dragHandle:hover {
+  background-color: var(--chakra-colors-gray-600);
+}
+
+:root.dark .resize-handle {
+  background-color: var(--chakra-colors-gray-600) !important;
+}
+
+:root.dark .resize-handle:hover {
+  background-color: var(--chakra-colors-gray-500) !important;
+}
+
+:root.dark .resize-handle:active {
+  background-color: var(--chakra-colors-blue-500) !important;
+}
+
+/* Additional dark mode styles */
+:root.dark .react-grid-layout {
+  background-color: var(--chakra-colors-gray-900);
+}
+
+:root.dark .panel {
+  background-color: var(--chakra-colors-gray-800);
+  border-color: var(--chakra-colors-gray-600);
+}
+
+:root.dark .panel-header {
+  background-color: var(--chakra-colors-gray-700);
 }

@@ -1,4 +1,4 @@
-import { Box, Heading, HStack } from "@chakra-ui/react";
+import { Box, Heading, HStack, useColorModeValue } from "@chakra-ui/react";
 import { DragHandleIcon } from "@chakra-ui/icons";
 
 interface PanelProps {
@@ -7,6 +7,11 @@ interface PanelProps {
 }
 
 export function Panel({ title, children }: PanelProps) {
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const headerBgColor = useColorModeValue('gray.50', 'gray.700');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const textColor = useColorModeValue('gray.800', 'white');
+
   return (
     <Box
       height="100%"
@@ -16,19 +21,19 @@ export function Panel({ title, children }: PanelProps) {
       borderWidth="1px"
       borderRadius="lg"
       overflow="hidden"
-      bg="white"
-      _dark={{ bg: "gray.800" }}
+      bg={bgColor}
+      borderColor={borderColor}
+      color={textColor}
     >
       <HStack 
         p={2} 
-        bg="gray.50" 
-        _dark={{ bg: "gray.700" }}
+        bg={headerBgColor}
         className="dragHandle"
         userSelect="none"
       >
         <DragHandleIcon 
           cursor="move"
-          color="gray.500"
+          color={useColorModeValue('gray.500', 'gray.400')}
         />
         <Heading size="sm" flex="1">
           {title}
