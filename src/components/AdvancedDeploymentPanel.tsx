@@ -5,6 +5,7 @@ import { useLogs } from "../contexts/LogsContext";
 import FirebaseManager from "../lib/FirebaseManager";
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { Panel } from './Panel';
 
 interface FirebaseConfig {
     hosting?: {
@@ -258,71 +259,71 @@ export function AdvancedDeploymentPanel() {
     }
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
-            <Heading size="md" mb={4}>Advanced Deployment</Heading>
-
-            <Accordion allowMultiple>
-                {Object.entries(groupedOptions).map(([type, options]) => (
-                    <AccordionItem key={type}>
-                        <AccordionButton>
-                            <Box flex="1" textAlign="left">
-                                <Text textTransform="capitalize">{type}</Text>
-                            </Box>
-                            <AccordionIcon />
-                        </AccordionButton>
-                        <AccordionPanel>
-                            <VStack align="stretch" spacing={2}>
-                                <Checkbox
-                                    isChecked={options.every(opt => opt.checked)}
-                                    isIndeterminate={options.some(opt => opt.checked) && !options.every(opt => opt.checked)}
-                                    onChange={(e) => handleToggleAll(type, e.target.checked)}
-                                >
-                                    Select All {type}
-                                </Checkbox>
-                                {options.map((option, index) => (
+        <Panel title="Advanced Deployment">
+            <Box>
+                <Accordion allowMultiple>
+                    {Object.entries(groupedOptions).map(([type, options]) => (
+                        <AccordionItem key={type}>
+                            <AccordionButton>
+                                <Box flex="1" textAlign="left">
+                                    <Text textTransform="capitalize">{type}</Text>
+                                </Box>
+                                <AccordionIcon />
+                            </AccordionButton>
+                            <AccordionPanel>
+                                <VStack align="stretch" spacing={2}>
                                     <Checkbox
-                                        key={`${option.type}-${option.name}`}
-                                        isChecked={option.checked}
-                                        onChange={() => handleToggleOption(deploymentOptions.findIndex(opt =>
-                                            opt.type === option.type && opt.name === option.name
-                                        ))}
-                                        ml={4}
+                                        isChecked={options.every(opt => opt.checked)}
+                                        isIndeterminate={options.some(opt => opt.checked) && !options.every(opt => opt.checked)}
+                                        onChange={(e) => handleToggleAll(type, e.target.checked)}
                                     >
-                                        {option.name}
-                                        {option.path && (
-                                            <Text fontSize="sm" color="gray.500" ml={2} as="span">
-                                                ({option.path})
-                                            </Text>
-                                        )}
+                                        Select All {type}
                                     </Checkbox>
-                                ))}
-                            </VStack>
-                        </AccordionPanel>
-                    </AccordionItem>
-                ))}
-            </Accordion>
+                                    {options.map((option, index) => (
+                                        <Checkbox
+                                            key={`${option.type}-${option.name}`}
+                                            isChecked={option.checked}
+                                            onChange={() => handleToggleOption(deploymentOptions.findIndex(opt =>
+                                                opt.type === option.type && opt.name === option.name
+                                            ))}
+                                            ml={4}
+                                        >
+                                            {option.name}
+                                            {option.path && (
+                                                <Text fontSize="sm" color="gray.500" ml={2} as="span">
+                                                    ({option.path})
+                                                </Text>
+                                            )}
+                                        </Checkbox>
+                                    ))}
+                                </VStack>
+                            </AccordionPanel>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
 
-            <HStack mt="auto" pt={4} spacing={2} width="100%">
-                <Button
-                    flex={1}
-                    colorScheme="blue"
-                    onClick={handleDeploy}
-                    isLoading={loading}
-                    isDisabled={!deploymentOptions.some(opt => opt.checked)}
-                >
-                    Deploy Selected
-                </Button>
-                {loading && (
+                <HStack mt="auto" pt={4} spacing={2} width="100%">
                     <Button
                         flex={1}
-                        colorScheme="red"
-                        onClick={handleCancel}
-                        variant="outline"
+                        colorScheme="blue"
+                        onClick={handleDeploy}
+                        isLoading={loading}
+                        isDisabled={!deploymentOptions.some(opt => opt.checked)}
                     >
-                        Cancel
+                        Deploy Selected
                     </Button>
-                )}
-            </HStack>
-        </Box>
+                    {loading && (
+                        <Button
+                            flex={1}
+                            colorScheme="red"
+                            onClick={handleCancel}
+                            variant="outline"
+                        >
+                            Cancel
+                        </Button>
+                    )}
+                </HStack>
+            </Box>
+        </Panel>
     );
 }

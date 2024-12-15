@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import FirebaseManager from "../lib/FirebaseManager";
 import { useProject } from '../contexts/ProjectContext';
 import { useLogs } from '../contexts/LogsContext';
+import { Panel } from './Panel';
 
 export function EmulatorPanel() {
     const [services, setServices] = useState<string[]>([]);
@@ -130,51 +131,53 @@ export function EmulatorPanel() {
     };
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
-            <Heading size="md">Emulators</Heading>
-            <CheckboxGroup
-                colorScheme="green"
-                value={services}
-                onChange={(values) => setServices(values as string[])}
-            >
-                <Wrap spacing={4} mt={4}>
-                    <WrapItem>
-                        <Checkbox value="hosting">Hosting</Checkbox>
-                    </WrapItem>
-                    <WrapItem>
-                        <Checkbox value="functions">Functions</Checkbox>
-                    </WrapItem>
-                    <WrapItem>
-                        <Checkbox value="firestore">Firestore</Checkbox>
-                    </WrapItem>
-                    <WrapItem>
-                        <Checkbox value="storage">Storage</Checkbox>
-                    </WrapItem>
-                </Wrap>
-            </CheckboxGroup>
-            <HStack mt="auto" pt={4} spacing={4} width="100%">
-                <Button
-                    flex={1}
+        <Panel title="Emulators">
+            <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
+                <Heading size="md">Emulators</Heading>
+                <CheckboxGroup
                     colorScheme="green"
-                    onClick={() => handleEmulatorAction("start")}
-                    isLoading={loading}>
-                    Start
-                </Button>
-                <Button
-                    flex={1}
-                    colorScheme="red"
-                    onClick={() => handleEmulatorAction("stop")}
-                    isLoading={loading}>
-                    Stop
-                </Button>
-                <Button
-                    flex={1}
-                    colorScheme="blue"
-                    onClick={() => handleEmulatorAction("restart")}
-                    isLoading={loading}>
-                    Restart
-                </Button>
-            </HStack>
-        </Box>
+                    value={services}
+                    onChange={(values) => setServices(values as string[])}
+                >
+                    <Wrap spacing={4} mt={4}>
+                        <WrapItem>
+                            <Checkbox value="hosting">Hosting</Checkbox>
+                        </WrapItem>
+                        <WrapItem>
+                            <Checkbox value="functions">Functions</Checkbox>
+                        </WrapItem>
+                        <WrapItem>
+                            <Checkbox value="firestore">Firestore</Checkbox>
+                        </WrapItem>
+                        <WrapItem>
+                            <Checkbox value="storage">Storage</Checkbox>
+                        </WrapItem>
+                    </Wrap>
+                </CheckboxGroup>
+                <HStack mt="auto" pt={4} spacing={4} width="100%">
+                    <Button
+                        flex={1}
+                        colorScheme="green"
+                        onClick={() => handleEmulatorAction("start")}
+                        isLoading={loading}>
+                        Start
+                    </Button>
+                    <Button
+                        flex={1}
+                        colorScheme="red"
+                        onClick={() => handleEmulatorAction("stop")}
+                        isLoading={loading}>
+                        Stop
+                    </Button>
+                    <Button
+                        flex={1}
+                        colorScheme="blue"
+                        onClick={() => handleEmulatorAction("restart")}
+                        isLoading={loading}>
+                        Restart
+                    </Button>
+                </HStack>
+            </Box>
+        </Panel>
     );
 }

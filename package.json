@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "start-gui": "bun run dev",
     "start-server": "bun src/server/server.ts",
-    "compile": "bun run build && esbuild src/server/server.ts --bundle --outfile=server-bundle.js && pkg ."
+    "compile": "bun run build && esbuild src/server/server.ts --bundle --outfile=server-bundle.js && pkg .",
+    "generate-icons": "bun scripts/generate-icons.ts"
   },
   "bin": "server.cjs",
   "pkg": {
@@ -83,6 +84,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "framer-motion": "^10.18.0",
+    "sharp": "^0.33.5",
     "typescript": "^5.2.2",
     "vite": "^5.1.0"
   },

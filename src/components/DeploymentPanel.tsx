@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import FirebaseManager from "../lib/FirebaseManager";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
+import { Panel } from './Panel';
 
 export function DeploymentPanel() {
     const [options, setOptions] = useState({
@@ -82,75 +83,77 @@ export function DeploymentPanel() {
     };
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
-            <Heading size="md">Deployment</Heading>
-            <Wrap spacing={4} mt={4}>
-                <WrapItem>
-                    <Checkbox
-                        isChecked={options.all}
-                        onChange={(e) => setOptions({ ...options, all: e.target.checked })}
-                    >
-                        Deploy All
-                    </Checkbox>
-                </WrapItem>
-                <WrapItem>
-                    <Checkbox
-                        isChecked={options.hosting}
-                        onChange={(e) => setOptions({ ...options, hosting: e.target.checked })}
-                        isDisabled={options.all}
-                    >
-                        Hosting
-                    </Checkbox>
-                </WrapItem>
-                <WrapItem>
-                    <Checkbox
-                        isChecked={options.functions}
-                        onChange={(e) => setOptions({ ...options, functions: e.target.checked })}
-                        isDisabled={options.all}
-                    >
-                        Functions
-                    </Checkbox>
-                </WrapItem>
-                <WrapItem>
-                    <Checkbox
-                        isChecked={options.storage}
-                        onChange={(e) => setOptions({ ...options, storage: e.target.checked })}
-                        isDisabled={options.all}
-                    >
-                        Storage
-                    </Checkbox>
-                </WrapItem>
-                <WrapItem>
-                    <Checkbox
-                        isChecked={options.rules}
-                        onChange={(e) => setOptions({ ...options, rules: e.target.checked })}
-                        isDisabled={options.all}
-                    >
-                        Rules
-                    </Checkbox>
-                </WrapItem>
-            </Wrap>
-            <HStack mt="auto" pt={4} spacing={2} width="100%">
-                <Button
-                    flex={1}
-                    colorScheme="blue"
-                    onClick={handleDeploy}
-                    isLoading={loading}
-                    isDisabled={!options.all && !Object.values(options).some((v) => v)}
-                >
-                    Deploy
-                </Button>
-                {loading && (
+        <Panel title="Deployment">
+            <Box display="flex" flexDirection="column" height="100%">
+                <Heading size="md">Deployment</Heading>
+                <Wrap spacing={4} mt={4}>
+                    <WrapItem>
+                        <Checkbox
+                            isChecked={options.all}
+                            onChange={(e) => setOptions({ ...options, all: e.target.checked })}
+                        >
+                            Deploy All
+                        </Checkbox>
+                    </WrapItem>
+                    <WrapItem>
+                        <Checkbox
+                            isChecked={options.hosting}
+                            onChange={(e) => setOptions({ ...options, hosting: e.target.checked })}
+                            isDisabled={options.all}
+                        >
+                            Hosting
+                        </Checkbox>
+                    </WrapItem>
+                    <WrapItem>
+                        <Checkbox
+                            isChecked={options.functions}
+                            onChange={(e) => setOptions({ ...options, functions: e.target.checked })}
+                            isDisabled={options.all}
+                        >
+                            Functions
+                        </Checkbox>
+                    </WrapItem>
+                    <WrapItem>
+                        <Checkbox
+                            isChecked={options.storage}
+                            onChange={(e) => setOptions({ ...options, storage: e.target.checked })}
+                            isDisabled={options.all}
+                        >
+                            Storage
+                        </Checkbox>
+                    </WrapItem>
+                    <WrapItem>
+                        <Checkbox
+                            isChecked={options.rules}
+                            onChange={(e) => setOptions({ ...options, rules: e.target.checked })}
+                            isDisabled={options.all}
+                        >
+                            Rules
+                        </Checkbox>
+                    </WrapItem>
+                </Wrap>
+                <HStack mt="auto" pt={4} spacing={2} width="100%">
                     <Button
                         flex={1}
-                        colorScheme="red"
-                        onClick={handleCancel}
-                        variant="outline"
+                        colorScheme="blue"
+                        onClick={handleDeploy}
+                        isLoading={loading}
+                        isDisabled={!options.all && !Object.values(options).some((v) => v)}
                     >
-                        Cancel
+                        Deploy
                     </Button>
-                )}
-            </HStack>
-        </Box>
+                    {loading && (
+                        <Button
+                            flex={1}
+                            colorScheme="red"
+                            onClick={handleCancel}
+                            variant="outline"
+                        >
+                            Cancel
+                        </Button>
+                    )}
+                </HStack>
+            </Box>
+        </Panel>
     );
 } 

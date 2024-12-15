@@ -3,6 +3,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useState, useEffect } from 'react';
 import { useToast } from '@chakra-ui/toast';
 import FirebaseManager from '../lib/FirebaseManager';
+import { Panel } from './Panel';
 
 export function DirectorySelector() {
   const { projectDir, setProjectDir, triggerSync } = useProject();
@@ -53,24 +54,26 @@ export function DirectorySelector() {
   };
 
   return (
-    <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
-      <Heading size="md">Project Directory</Heading>
-      <Text mt={2}>Specify the Firebase project directory</Text>
-      <HStack mt={4} spacing={4}>
-        <Input
-          value={tempDir}
-          onChange={(e) => setTempDir(e.target.value)}
-          placeholder="Enter project directory path"
-        />
-        <Button
-          colorScheme="blue"
-          onClick={() => handleSync()}
-          isLoading={syncing}
-          loadingText="Syncing"
-        >
-          Sync
-        </Button>
-      </HStack>
-    </Box>
+    <Panel title="Directory">
+      <Box>
+        <Heading size="md">Project Directory</Heading>
+        <Text mt={2}>Specify the Firebase project directory</Text>
+        <HStack mt={4} spacing={4}>
+          <Input
+            value={tempDir}
+            onChange={(e) => setTempDir(e.target.value)}
+            placeholder="Enter project directory path"
+          />
+          <Button
+            colorScheme="blue"
+            onClick={() => handleSync()}
+            isLoading={syncing}
+            loadingText="Syncing"
+          >
+            Sync
+          </Button>
+        </HStack>
+      </Box>
+    </Panel>
   );
 } 

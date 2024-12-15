@@ -8,6 +8,7 @@ import { DeleteIcon, AddIcon, CheckIcon, WarningIcon, RepeatIcon } from '@chakra
 import { useState, useEffect } from "react";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
+import { Panel } from './Panel';
 
 interface ServiceAccount {
     projectId: string;
@@ -211,127 +212,129 @@ export function SettingsPanel() {
     };
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
-            <VStack spacing={6} align="stretch">
-                <Box>
-                    <HStack justify="space-between" mb={4}>
-                        <Heading size="sm">Firebase Service Accounts</Heading>
-                        <Button leftIcon={<AddIcon />} size="sm" onClick={onOpen}>
-                            Add Account
-                        </Button>
-                    </HStack>
+        <Panel title="Settings">
+            <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
+                <VStack spacing={6} align="stretch">
+                    <Box>
+                        <HStack justify="space-between" mb={4}>
+                            <Heading size="sm">Firebase Service Accounts</Heading>
+                            <Button leftIcon={<AddIcon />} size="sm" onClick={onOpen}>
+                                Add Account
+                            </Button>
+                        </HStack>
 
-                    {serviceAccounts.length === 0 ? (
-                        <Alert status="info">
-                            <AlertIcon />
-                            No service accounts configured. Add one to get started.
-                        </Alert>
-                    ) : (
-                        <List spacing={3}>
-                            {serviceAccounts.map((account) => (
-                                <ListItem
-                                    key={account.projectId}
-                                    p={3}
-                                    borderWidth="1px"
-                                    borderRadius="md"
-                                    bg={account.active ? 'green.50' : undefined}
-                                >
-                                    <HStack justify="space-between">
-                                        <VStack align="start" spacing={1}>
+                        {serviceAccounts.length === 0 ? (
+                            <Alert status="info">
+                                <AlertIcon />
+                                No service accounts configured. Add one to get started.
+                            </Alert>
+                        ) : (
+                            <List spacing={3}>
+                                {serviceAccounts.map((account) => (
+                                    <ListItem
+                                        key={account.projectId}
+                                        p={3}
+                                        borderWidth="1px"
+                                        borderRadius="md"
+                                        bg={account.active ? 'green.50' : undefined}
+                                    >
+                                        <HStack justify="space-between">
+                                            <VStack align="start" spacing={1}>
+                                                <HStack>
+                                                    <Text fontWeight="bold">{account.projectId}</Text>
+                                                    {account.active && (
+                                                        <Badge colorScheme="green">Active</Badge>
+                                                    )}
+                                                </HStack>
+                                                <Text fontSize="sm" color="gray.600">
+                                                    {account.clientEmail}
+                                                </Text>
+                                            </VStack>
                                             <HStack>
-                                                <Text fontWeight="bold">{account.projectId}</Text>
-                                                {account.active && (
-                                                    <Badge colorScheme="green">Active</Badge>
+                                                {account.active ? (
+                                                    <Button
+                                                        size="sm"
+                                                        colorScheme="blue"
+                                                        leftIcon={<RepeatIcon />}
+                                                        onClick={() => handleSetActiveAccount(account.projectId)}
+                                                        title="Reactivate service account"
+                                                    >
+                                                        Reactivate
+                                                    </Button>
+                                                ) : (
+                                                    <IconButton
+                                                        aria-label="Set as active"
+                                                        icon={<CheckIcon />}
+                                                        size="sm"
+                                                        colorScheme="green"
+                                                        onClick={() => handleSetActiveAccount(account.projectId)}
+                                                    />
                                                 )}
-                                            </HStack>
-                                            <Text fontSize="sm" color="gray.600">
-                                                {account.clientEmail}
-                                            </Text>
-                                        </VStack>
-                                        <HStack>
-                                            {account.active ? (
-                                                <Button
-                                                    size="sm"
-                                                    colorScheme="blue"
-                                                    leftIcon={<RepeatIcon />}
-                                                    onClick={() => handleSetActiveAccount(account.projectId)}
-                                                    title="Reactivate service account"
-                                                >
-                                                    Reactivate
-                                                </Button>
-                                            ) : (
                                                 <IconButton
-                                                    aria-label="Set as active"
-                                                    icon={<CheckIcon />}
+                                                    aria-label="Delete account"
+                                                    icon={<DeleteIcon />}
                                                     size="sm"
-                                                    colorScheme="green"
-                                                    onClick={() => handleSetActiveAccount(account.projectId)}
+                                                    colorScheme="red"
+                                                    onClick={() => handleDeleteAccount(account.projectId)}
                                                 />
-                                            )}
-                                            <IconButton
-                                                aria-label="Delete account"
-                                                icon={<DeleteIcon />}
-                                                size="sm"
-                                                colorScheme="red"
-                                                onClick={() => handleDeleteAccount(account.projectId)}
-                                            />
+                                            </HStack>
                                         </HStack>
-                                    </HStack>
-                                </ListItem>
-                            ))}
-                        </List>
-                    )}
-                </Box>
+                                    </ListItem>
+                                ))}
+                            </List>
+                        )}
+                    </Box>
 
-                <Modal isOpen={isOpen} onClose={onClose}>
-                    <ModalOverlay />
-                    <ModalContent>
-                        <ModalHeader>Add Service Account</ModalHeader>
-                        <ModalCloseButton />
-                        <ModalBody pb={6}>
-                            <FormControl>
-                                <FormLabel>Service Account Key (JSON)</FormLabel>
-                                <Input
-                                    type="file"
-                                    accept=".json"
-                                    onChange={(e) => setServiceKey(e.target.files?.[0] || null)}
-                                />
-                                <Button
-                                    mt={4}
-                                    colorScheme="blue"
-                                    onClick={handleServiceKeyUpload}
-                                    isLoading={uploading}
-                                    isDisabled={!serviceKey}
-                                    width="100%"
-                                >
-                                    Upload Service Account Key
-                                </Button>
-                            </FormControl>
-                        </ModalBody>
-                    </ModalContent>
-                </Modal>
+                    <Modal isOpen={isOpen} onClose={onClose}>
+                        <ModalOverlay />
+                        <ModalContent>
+                            <ModalHeader>Add Service Account</ModalHeader>
+                            <ModalCloseButton />
+                            <ModalBody pb={6}>
+                                <FormControl>
+                                    <FormLabel>Service Account Key (JSON)</FormLabel>
+                                    <Input
+                                        type="file"
+                                        accept=".json"
+                                        onChange={(e) => setServiceKey(e.target.files?.[0] || null)}
+                                    />
+                                    <Button
+                                        mt={4}
+                                        colorScheme="blue"
+                                        onClick={handleServiceKeyUpload}
+                                        isLoading={uploading}
+                                        isDisabled={!serviceKey}
+                                        width="100%"
+                                    >
+                                        Upload Service Account Key
+                                    </Button>
+                                </FormControl>
+                            </ModalBody>
+                        </ModalContent>
+                    </Modal>
 
-                <Divider />
+                    <Divider />
 
-                <Box>
-                    <Heading size="sm" mb={4}>Google Analytics Settings</Heading>
-                    <FormControl>
-                        <FormLabel>GA4 Property ID</FormLabel>
-                        <Input
-                            placeholder="G-XXXXXXXXXX"
-                            value={measurementId}
-                            onChange={(e) => setMeasurementId(e.target.value)}
-                        />
-                        <Text fontSize="sm" color="gray.500" mt={1}>
-                            Your GA4 Measurement ID starts with 'G-' and can be found in your Google Analytics property settings
-                        </Text>
-                    </FormControl>
-                </Box>
+                    <Box>
+                        <Heading size="sm" mb={4}>Google Analytics Settings</Heading>
+                        <FormControl>
+                            <FormLabel>GA4 Property ID</FormLabel>
+                            <Input
+                                placeholder="G-XXXXXXXXXX"
+                                value={measurementId}
+                                onChange={(e) => setMeasurementId(e.target.value)}
+                            />
+                            <Text fontSize="sm" color="gray.500" mt={1}>
+                                Your GA4 Measurement ID starts with 'G-' and can be found in your Google Analytics property settings
+                            </Text>
+                        </FormControl>
+                    </Box>
 
-                <Button colorScheme="blue" onClick={saveSettings}>
-                    Save Settings
-                </Button>
-            </VStack>
-        </Box>
+                    <Button colorScheme="blue" onClick={saveSettings}>
+                        Save Settings
+                    </Button>
+                </VStack>
+            </Box>
+        </Panel>
     );
 } 

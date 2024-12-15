@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import FirebaseManager from "../lib/FirebaseManager";
 import { useProject } from '../contexts/ProjectContext';
 import { useLogs } from '../contexts/LogsContext';
+import { Panel } from './Panel';
 
 export function DependencyInstaller() {
     const [loading, setLoading] = useState(false);
@@ -47,20 +48,22 @@ export function DependencyInstaller() {
     };
 
     return (
-        <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
-            <Heading size="md">Dependencies</Heading>
-            <Text mt={2}>Install dependencies for all project directories</Text>
-            <Box mt="auto" pt={4} width="100%">
-                <Button
-                    width="100%"
-                    colorScheme="green"
-                    onClick={handleInstall}
-                    isLoading={loading}
-                    loadingText="Installing..."
-                >
-                    Install Dependencies
-                </Button>
+        <Panel title="Dependencies">
+            <Box p={5} shadow="md" borderWidth="1px" borderRadius="md" height="100%" display="flex" flexDirection="column">
+                <Heading size="md">Dependencies</Heading>
+                <Text mt={2}>Install dependencies for all project directories</Text>
+                <Box mt="auto" pt={4} width="100%">
+                    <Button
+                        width="100%"
+                        colorScheme="green"
+                        onClick={handleInstall}
+                        isLoading={loading}
+                        loadingText="Installing..."
+                    >
+                        Install Dependencies
+                    </Button>
+                </Box>
             </Box>
-        </Box>
+        </Panel>
     );
 } 

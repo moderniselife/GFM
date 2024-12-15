@@ -1,43 +1,46 @@
-import { Box, Heading, IconButton, HStack, Collapse, useDisclosure } from "@chakra-ui/react";
-import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
-import { ReactNode } from "react";
+import { Box, Heading, HStack } from "@chakra-ui/react";
+import { DragHandleIcon } from "@chakra-ui/icons";
 
 interface PanelProps {
-    title: string;
-    children: ReactNode;
-    buttons?: ReactNode;
-    noShadow?: boolean;
-    noBorder?: boolean;
-    bg?: string;
-    borderColor?: string;
-    maxWidth?: string;
-    width?: string;
-    minWidth?: string;
-    size?: "sm" | "md" | "lg";
-    [key: string]: any;
+  title: string;
+  children: React.ReactNode;
 }
 
-export function Panel({ title, children, buttons, noShadow, noBorder, ...props }: PanelProps) {
-    const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: true });
-
-    return (
-        <Box p={5} shadow={noShadow ? undefined : "md"} borderWidth={noBorder ? undefined : "1px"} borderRadius="md" height={isOpen ? "100%" : "auto"} {...props}>
-            <HStack justify="space-between" mb={isOpen ? 4 : 0}>
-                <Heading size="md">{title}</Heading>
-                <HStack spacing={2}>
-                    {buttons}
-                    <IconButton
-                        aria-label={isOpen ? "Collapse panel" : "Expand panel"}
-                        icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                        onClick={onToggle}
-                        size="sm"
-                        variant="ghost"
-                    />
-                </HStack>
-            </HStack>
-            <Collapse in={isOpen} animateOpacity>
-                {children}
-            </Collapse>
-        </Box>
-    );
+export function Panel({ title, children }: PanelProps) {
+  return (
+    <Box
+      height="100%"
+      width="100%"
+      display="flex"
+      flexDirection="column"
+      borderWidth="1px"
+      borderRadius="lg"
+      overflow="hidden"
+      bg="white"
+      _dark={{ bg: "gray.800" }}
+    >
+      <HStack 
+        p={2} 
+        bg="gray.50" 
+        _dark={{ bg: "gray.700" }}
+        className="dragHandle"
+        userSelect="none"
+      >
+        <DragHandleIcon 
+          cursor="move"
+          color="gray.500"
+        />
+        <Heading size="sm" flex="1">
+          {title}
+        </Heading>
+      </HStack>
+      <Box 
+        flex="1" 
+        p={4} 
+        overflowY="auto"
+      >
+        {children}
+      </Box>
+    </Box>
+  );
 } 

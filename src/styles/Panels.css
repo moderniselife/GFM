@@ -1,3 +1,7 @@
+html {
+  user-select: none;
+}
+
 .resize-handle:hover {
   background-color: #cbd5e0 !important;
 }
@@ -20,4 +24,51 @@
 
 [data-panel-group-direction="vertical"] > [data-panel-resize-handle][data-panel-resize-handle-active] {
   background-color: #4299E1;
+}
+
+.dragHandle {
+  cursor: move;
+  user-select: none;
+}
+
+.dragHandle:hover {
+  background-color: var(--chakra-colors-gray-100);
+}
+
+[data-theme="dark"] .dragHandle:hover {
+  background-color: var(--chakra-colors-gray-600);
+}
+
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top;
+}
+
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+}
+
+.react-grid-item.resizing {
+  z-index: 1;
+  will-change: width, height;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+  will-change: transform;
+}
+
+.dragHandle {
+  cursor: move;
+  user-select: none;
+  width: 100%;
+}
+
+.dragHandle:hover {
+  background-color: var(--chakra-colors-gray-100);
+}
+
+[data-theme="dark"] .dragHandle:hover {
+  background-color: var(--chakra-colors-gray-600);
 }

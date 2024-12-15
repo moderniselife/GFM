@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import FirebaseManager from "../lib/FirebaseManager";
 import { useProject } from "../contexts/ProjectContext";
 import { useLogs } from "../contexts/LogsContext";
+import { Panel } from "./Panel";
 
 export function ProjectSelector() {
   const [currentProject, setCurrentProject] = useState<string>("");
@@ -77,32 +78,34 @@ export function ProjectSelector() {
   };
 
   return (
-    <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Heading size="md">Project Selection</Heading>
-        <Button 
-          onClick={syncProjects} 
-          isLoading={loading}
-          size="sm"
-          colorScheme="blue"
+    <Panel title="Project">
+      <Box>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Heading size="md">Project Selection</Heading>
+          <Button 
+            onClick={syncProjects} 
+            isLoading={loading}
+            size="sm"
+            colorScheme="blue"
+          >
+            Sync Projects
+          </Button>
+        </Box>
+        <Text mt={2}>Current Project: {currentProject || 'None'}</Text>
+        <Select
+          mt={4}
+          placeholder="Select project"
+          onChange={(e) => handleProjectSwitch(e.target.value)}
+          isDisabled={loading || projects.length === 0}
+          value={currentProject}
         >
-          Sync Projects
-        </Button>
+          {projects.map((project) => (
+            <option key={project} value={project}>
+              {project}
+            </option>
+          ))}
+        </Select>
       </Box>
-      <Text mt={2}>Current Project: {currentProject || 'None'}</Text>
-      <Select
-        mt={4}
-        placeholder="Select project"
-        onChange={(e) => handleProjectSwitch(e.target.value)}
-        isDisabled={loading || projects.length === 0}
-        value={currentProject}
-      >
-        {projects.map((project) => (
-          <option key={project} value={project}>
-            {project}
-          </option>
-        ))}
-      </Select>
-    </Box>
+    </Panel>
   );
 }
