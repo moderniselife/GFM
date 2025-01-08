@@ -10,20 +10,21 @@ html {
   background-color: #4299e1 !important;
 }
 
-[data-panel-group-direction="vertical"] > [data-panel-resize-handle] {
+[data-panel-group-direction='vertical'] > [data-panel-resize-handle] {
   height: 4px;
-  background-color: #E2E8F0;
+  background-color: #e2e8f0;
   cursor: row-resize;
   transition: background-color 0.2s;
   margin: 4px 0;
 }
 
-[data-panel-group-direction="vertical"] > [data-panel-resize-handle]:hover {
-  background-color: #CBD5E0;
+[data-panel-group-direction='vertical'] > [data-panel-resize-handle]:hover {
+  background-color: #cbd5e0;
 }
 
-[data-panel-group-direction="vertical"] > [data-panel-resize-handle][data-panel-resize-handle-active] {
-  background-color: #4299E1;
+[data-panel-group-direction='vertical']
+  > [data-panel-resize-handle][data-panel-resize-handle-active] {
+  background-color: #4299e1;
 }
 
 .dragHandle {
@@ -35,7 +36,7 @@ html {
   background-color: var(--chakra-colors-gray-100);
 }
 
-[data-color-mode="dark"] .dragHandle:hover {
+[data-color-mode='dark'] .dragHandle:hover {
   background-color: var(--chakra-colors-gray-600);
 }
 
@@ -69,7 +70,7 @@ html {
   background-color: var(--chakra-colors-gray-100);
 }
 
-[data-color-mode="dark"] .dragHandle:hover {
+[data-color-mode='dark'] .dragHandle:hover {
   background-color: var(--chakra-colors-gray-600);
 }
 

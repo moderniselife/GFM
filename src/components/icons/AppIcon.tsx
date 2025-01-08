@@ -1,7 +1,13 @@
 import React from 'react';
 
 export const AppIcon = ({ size = 512, color = '#4299E1' }) => (
-  <svg width={size} height={size} viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 512 512"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
     <rect width="512" height="512" rx="100" fill={color} />
     <path
       d="M256 128C185.307 128 128 185.307 128 256C128 326.693 185.307 384 256 384C326.693 384 384 326.693 384 256C384 185.307 326.693 128 256 128ZM256 352C203.065 352 160 308.935 160 256C160 203.065 203.065 160 256 160C308.935 160 352 203.065 352 256C352 308.935 308.935 352 256 352Z"
@@ -12,4 +18,4 @@ export const AppIcon = ({ size = 512, color = '#4299E1' }) => (
       fill="white"
     />
   </svg>
-); 
+);

@@ -1,98 +1,114 @@
-import { Box, Button, Checkbox, Heading, Text, VStack, HStack, IconButton, Flex } from "@chakra-ui/react";
-import { ChevronUpIcon, ChevronDownIcon } from "@chakra-ui/icons";
-import { useLogs } from "../contexts/LogsContext";
-import { useRef, useEffect, useState } from "react";
-import { parseANSIString, parseTimestamp } from "../utils/logFormatter";
-import { Panel } from "./Panel";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Text,
+  VStack,
+  HStack,
+  IconButton,
+  Flex,
+} from '@chakra-ui/react';
+import { ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { useLogs } from '../contexts/LogsContext';
+import { useRef, useEffect, useState, useCallback, memo } from 'react';
+import { parseANSIString, parseTimestamp } from '../utils/logFormatter';
+import { Panel } from './Panel';
+import { FixedSizeList as List } from 'react-window';
+
+const ITEM_SIZE = 24; // Height of each log entry in pixels
+const LIST_HEIGHT = 300; // Max height of the log container
+
+const LogEntry = memo(({ message, level, style }: { 
+  message: string; 
+  level?: 'info' | 'error' | 'success' | 'warning';
+  style: React.CSSProperties;
+}) => {
+  const { timestamp, remainingMessage } = parseTimestamp(message);
+  const styledParts = parseANSIString(remainingMessage);
+
+  const levelColor = level
+    ? {
+        info: 'blue.500',
+        error: 'red.500',
+        success: 'green.500',
+        warning: 'yellow.500',
+      }[level]
+    : undefined;
+
+  return (
+    <Flex alignItems="flex-start" gap={2} style={style}>
+      <Text color="gray.500" flexShrink={0}>
+        {timestamp || new Date().toLocaleTimeString()}
+      </Text>
+      <Box>
+        {styledParts.map((part, index) => (
+          <Text
+            key={index}
+            as="span"
+            color={part.style.color || levelColor}
+            fontWeight={part.style.fontWeight}
+            fontStyle={part.style.fontStyle}
+          >
+            {part.text}
+          </Text>
+        ))}
+      </Box>
+    </Flex>
+  );
+});
+
+LogEntry.displayName = 'LogEntry';
 
 export function LogsPanel() {
   const { logs, clearLogs } = useLogs();
-  const logsBoxRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<List>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const prevLogsLengthRef = useRef(logs.length);
 
   useEffect(() => {
-    if (autoScroll && logsBoxRef.current) {
-      logsBoxRef.current.scrollTop = logsBoxRef.current.scrollHeight;
+    if (autoScroll && logs.length !== prevLogsLengthRef.current) {
+      listRef.current?.scrollToItem(logs.length - 1);
     }
+    prevLogsLengthRef.current = logs.length;
   }, [logs, autoScroll]);
 
-  const renderStyledText = (message: string, level?: 'info' | 'error' | 'success' | 'warning') => {
-    const { timestamp, remainingMessage } = parseTimestamp(message);
-    const styledParts = parseANSIString(remainingMessage);
-
-    const levelColor = level ? {
-      info: 'blue.500',
-      error: 'red.500',
-      success: 'green.500',
-      warning: 'yellow.500'
-    }[level] : undefined;
-
-    return (
-      <Flex alignItems="flex-start" gap={2}>
-        <Text color="gray.500" flexShrink={0}>
-          {timestamp || new Date().toLocaleTimeString()}
-        </Text>
-        <Box>
-          {styledParts.map((part, index) => (
-            <Text
-              key={index}
-              as="span"
-              color={part.style.color || levelColor}
-              fontWeight={part.style.fontWeight}
-              fontStyle={part.style.fontStyle}
-            >
-              {part.text}
-            </Text>
-          ))}
-        </Box>
-      </Flex>
-    );
-  };
+  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const log = logs[index];
+    return <LogEntry message={log.message} level={log.level} style={style} />;
+  }, [logs]);
 
   return (
     <Panel title="Logs">
       <VStack align="stretch" spacing={4}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Heading size="md">Logs</Heading>
-          <HStack spacing={2}>
-            <Checkbox
-              isChecked={autoScroll}
-              onChange={(e) => setAutoScroll(e.target.checked)}
-              size="sm"
-            >
-              Auto-scroll
-            </Checkbox>
-            <IconButton
-              aria-label="Scroll to top"
-              icon={<ChevronUpIcon />}
-              size="sm"
-              onClick={() => {
-                if (logsBoxRef.current) logsBoxRef.current.scrollTop = 0;
-              }}
-            />
-            <IconButton
-              aria-label="Scroll to bottom"
-              icon={<ChevronDownIcon />}
-              size="sm"
-              onClick={() => {
-                if (logsBoxRef.current) {
-                  logsBoxRef.current.scrollTop = logsBoxRef.current.scrollHeight;
-                }
-              }}
-            />
-            <Button size="sm" onClick={clearLogs}>Clear</Button>
-          </HStack>
-        </Box>
+        <HStack spacing={2} justifyContent="flex-end">
+          <Checkbox
+            isChecked={autoScroll}
+            onChange={e => setAutoScroll(e.target.checked)}
+            size="sm"
+          >
+            Auto-scroll
+          </Checkbox>
+          <IconButton
+            aria-label="Scroll to top"
+            icon={<ChevronUpIcon />}
+            size="sm"
+            onClick={() => listRef.current?.scrollToItem(0)}
+          />
+          <IconButton
+            aria-label="Scroll to bottom"
+            icon={<ChevronDownIcon />}
+            size="sm"
+            onClick={() => listRef.current?.scrollToItem(logs.length - 1)}
+          />
+          <Button size="sm" onClick={clearLogs}>
+            Clear
+          </Button>
+        </HStack>
         <Box
-          ref={logsBoxRef}
-          maxH="300px"
-          overflowY="auto"
           bg="gray.50"
-          p={4}
           borderRadius="md"
           fontFamily="mono"
           fontSize="sm"
-          whiteSpace="pre-wrap"
           css={{
             '&::-webkit-scrollbar': {
               width: '8px',
@@ -110,13 +126,18 @@ export function LogsPanel() {
             },
           }}
         >
-          {logs.map((log, index) => (
-            <Box key={index} mb={1}>
-              {renderStyledText(log.message, log.level)}
-            </Box>
-          ))}
+          <List
+            ref={listRef}
+            height={LIST_HEIGHT}
+            itemCount={logs.length}
+            itemSize={ITEM_SIZE}
+            width="100%"
+            overscanCount={5}
+          >
+            {Row}
+          </List>
         </Box>
       </VStack>
     </Panel>
   );
-} 
+}

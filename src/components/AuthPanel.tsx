@@ -1,9 +1,26 @@
-import { Box, Heading, Table, Thead, Tbody, Tr, Th, Td, Button, useToast, Text, Badge, HStack, Select, ButtonGroup, Flex } from "@chakra-ui/react";
-import { useState, useEffect, useMemo } from "react";
-import { useProject } from "../contexts/ProjectContext";
-import { useLogs } from "../contexts/LogsContext";
-import FirebaseManager from "../lib/FirebaseManager";
-import { Panel } from "./Panel";
+import {
+  Box,
+  Heading,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Button,
+  useToast,
+  Text,
+  Badge,
+  HStack,
+  Select,
+  ButtonGroup,
+  Flex,
+} from '@chakra-ui/react';
+import { useState, useEffect, useMemo } from 'react';
+import { useProject } from '../contexts/ProjectContext';
+import { useLogs } from '../contexts/LogsContext';
+import FirebaseManager from '../lib/FirebaseManager';
+import { Panel } from './Panel';
 
 interface User {
   uid: string;
@@ -33,7 +50,7 @@ export function AuthPanel() {
     totalUsers: 0,
     totalPages: 1,
     hasNextPage: false,
-    hasPreviousPage: false
+    hasPreviousPage: false,
   });
 
   const { projectDir } = useProject();
@@ -45,9 +62,9 @@ export function AuthPanel() {
   const fetchUsers = async (page: number = 1, limit: number = 10) => {
     if (!projectDir) {
       toast({
-        title: "No directory selected",
-        description: "Please select a project directory first",
-        status: "warning",
+        title: 'No directory selected',
+        description: 'Please select a project directory first',
+        status: 'warning',
         duration: 3000,
       });
       return;
@@ -72,7 +89,10 @@ export function AuthPanel() {
       const data = await response.json();
       setUsers(data.users);
       setPagination(data.pagination);
-      addLog(`Fetched ${data.users.length} users (page ${page} of ${data.pagination.totalPages})`, 'success');
+      addLog(
+        `Fetched ${data.users.length} users (page ${page} of ${data.pagination.totalPages})`,
+        'success'
+      );
     } catch (error) {
       toast({
         title: 'Error fetching users',
@@ -131,7 +151,16 @@ export function AuthPanel() {
   }, [projectDir]);
 
   return (
-    <Panel title="Authentication" buttons={loading && <Text as="span" ml={2} color="gray.500" fontSize="sm">(Loading...)</Text>}>
+    <Panel
+      title="Authentication"
+      buttons={
+        loading && (
+          <Text as="span" ml={2} color="gray.500" fontSize="sm">
+            (Loading...)
+          </Text>
+        )
+      }
+    >
       <Flex justify="space-between" align="center" mb={4}>
         <Text color="gray.500" fontSize="sm">
           Total Users: {pagination.totalUsers}
@@ -154,7 +183,7 @@ export function AuthPanel() {
               </Tr>
             </Thead>
             <Tbody>
-              {users.map((user) => (
+              {users.map(user => (
                 <Tr key={user.uid}>
                   <Td>
                     {user.email}
@@ -193,9 +222,9 @@ export function AuthPanel() {
                 size="sm"
                 width="70px"
                 value={pagination.limit}
-                onChange={(e) => fetchUsers(1, parseInt(e.target.value))}
+                onChange={e => fetchUsers(1, parseInt(e.target.value))}
               >
-                {[5, 10, 20, 50].map((value) => (
+                {[5, 10, 20, 50].map(value => (
                   <option key={`limit-${value}`} value={value}>
                     {value}
                   </option>
@@ -227,4 +256,4 @@ export function AuthPanel() {
       )}
     </Panel>
   );
-} 
+}

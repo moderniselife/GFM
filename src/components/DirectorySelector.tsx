@@ -28,11 +28,11 @@ export function DirectorySelector() {
     try {
       // Try to get the current project to verify the directory is valid
       await manager.getCurrentProject();
-      
+
       // If successful, update the project directory
       setProjectDir(directory);
       triggerSync();
-      
+
       toast({
         title: 'Directory updated',
         description: `Project directory set to: ${directory}`,
@@ -61,7 +61,7 @@ export function DirectorySelector() {
         <HStack mt={4} spacing={4}>
           <Input
             value={tempDir}
-            onChange={(e) => setTempDir(e.target.value)}
+            onChange={e => setTempDir(e.target.value)}
             placeholder="Enter project directory path"
           />
           <Button
@@ -76,4 +76,4 @@ export function DirectorySelector() {
       </Box>
     </Panel>
   );
-} 
+}
