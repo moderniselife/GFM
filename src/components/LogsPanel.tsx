@@ -7,6 +7,7 @@ import {
   HStack,
   IconButton,
   Flex,
+  useToast,
 } from '@chakra-ui/react';
 import { ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { useLogs } from '../contexts/LogsContext';
@@ -15,16 +16,30 @@ import { parseANSIString, parseTimestamp } from '../utils/logFormatter';
 import { Panel } from './Panel';
 import { FixedSizeList as List } from 'react-window';
 
-const ITEM_SIZE = 24; // Height of each log entry in pixels
+const ITEM_SIZE = 36; // Height of each log entry in pixels to accommodate wrapped text
 const LIST_HEIGHT = 300; // Max height of the log container
 
-const LogEntry = memo(({ message, level, style }: { 
-  message: string; 
+const LogEntry = memo(({ message, level, style }: {
+  message: string;
   level?: 'info' | 'error' | 'success' | 'warning';
   style: React.CSSProperties;
 }) => {
+  const toast = useToast();
   const { timestamp, remainingMessage } = parseTimestamp(message);
   const styledParts = parseANSIString(remainingMessage);
+
+  const handleClick = () => {
+    const fullMessage = `${timestamp || new Date().toLocaleTimeString()} ${message}`;
+    navigator.clipboard.writeText(fullMessage).then(() => {
+      toast({
+        title: "Copied to clipboard",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+        position: "top-right"
+      });
+    });
+  };
 
   const levelColor = level
     ? {
@@ -36,11 +51,21 @@ const LogEntry = memo(({ message, level, style }: {
     : undefined;
 
   return (
-    <Flex alignItems="flex-start" gap={2} style={style}>
-      <Text color="gray.500" flexShrink={0}>
+    <Flex
+      alignItems="flex-start"
+      gap={2}
+      style={{...style, minHeight: ITEM_SIZE}}
+      overflow="hidden"
+      onClick={handleClick}
+      cursor="pointer"
+      _hover={{ bg: 'gray.100' }}
+      transition="background-color 0.2s"
+      px={2}
+    >
+      <Text color="gray.500" flexShrink={0} whiteSpace="nowrap">
         {timestamp || new Date().toLocaleTimeString()}
       </Text>
-      <Box>
+      <Box flex="1" overflow="hidden" wordBreak="break-word">
         {styledParts.map((part, index) => (
           <Text
             key={index}
@@ -133,6 +158,7 @@ export function LogsPanel() {
             itemSize={ITEM_SIZE}
             width="100%"
             overscanCount={5}
+            style={{ paddingRight: '8px' }}
           >
             {Row}
           </List>
