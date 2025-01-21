@@ -1,9 +1,15 @@
 import express from 'express';
 import { execSync, spawn } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import cors from 'cors';
-import Server from "ws";
+import Server, { WebSocket } from "ws";
+
+// Extended WebSocket interface with custom properties
+interface ExtendedWebSocket extends WebSocket {
+  clientId?: string;
+  isAlive?: boolean;
+}
 import http from 'http';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { promises as fs } from 'fs';
@@ -2136,6 +2142,132 @@ app.post('/api/firebase/firestore/update', errorHandler(async (req, res) => {
   }
 }));
 
+// Add endpoints for script management
+app.get('/api/scripts/vite-servers', errorHandler(async (req, res) => {
+  try {
+    const findViteServers = (dir: string): { path: string; scripts: { [key: string]: string } }[] => {
+      const results: { path: string; scripts: { [key: string]: string } }[] = [];
+      
+      // Check if package.json exists in current directory
+      const packageJsonPath = join(dir, 'package.json');
+      if (existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+        
+        // Check if vite is in dependencies or devDependencies
+        const hasVite = (packageJson.dependencies && packageJson.dependencies.vite) ||
+                       (packageJson.devDependencies && packageJson.devDependencies.vite);
+        
+        if (hasVite && packageJson.scripts) {
+          // Filter scripts that use vite
+          const viteScripts = Object.entries(packageJson.scripts)
+            .filter(([_, command]) => String(command).includes('vite'))
+            .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+          
+          if (Object.keys(viteScripts).length > 0) {
+            results.push({
+              path: dir,
+              scripts: viteScripts
+            });
+          }
+        }
+      }
+      
+      // Recursively check subdirectories
+      const items = readdirSync(dir, { withFileTypes: true });
+      for (const item of items) {
+        if (item.isDirectory() && !item.name.startsWith('.') && item.name !== 'node_modules') {
+          const subDir = join(dir, item.name);
+          results.push(...findViteServers(subDir));
+        }
+      }
+      
+      return results;
+    };
+
+    const viteServers = findViteServers(process.cwd());
+    res.json({ servers: viteServers });
+  } catch (error) {
+    console.error('Error finding Vite servers:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to find Vite servers'
+    });
+  }
+}));
+
+app.post('/api/scripts/run', errorHandler(async (req, res) => {
+  try {
+    const { scriptPath, scriptName, clientId } = req.body;
+    
+    if (!scriptPath || !scriptName) {
+      throw new Error('Script path and name are required');
+    }
+
+    // Find the corresponding WebSocket client
+    const wsClient = Array.from(wss.clients).find(
+      (client: ExtendedWebSocket) => client.clientId === clientId
+    ) as ExtendedWebSocket | undefined;
+
+    if (!wsClient) {
+      throw new Error('WebSocket connection not found');
+    }
+
+    // Send initial response
+    res.json({ message: 'Script execution started' });
+
+    // Execute the script
+    const scriptProcess = spawn('npm', ['run', scriptName], {
+      shell: true,
+      cwd: scriptPath
+    });
+
+    // Handle stdout
+    scriptProcess.stdout.on('data', (data) => {
+      const message = data.toString().trim();
+      if (message) {
+        wsClient.send(JSON.stringify({
+          type: 'log',
+          message,
+          level: 'info'
+        }));
+      }
+    });
+
+    // Handle stderr
+    scriptProcess.stderr.on('data', (data) => {
+      const message = data.toString().trim();
+      if (message) {
+        wsClient.send(JSON.stringify({
+          type: 'log',
+          message,
+          level: 'error'
+        }));
+      }
+    });
+
+    // Handle process completion
+    scriptProcess.on('close', (code) => {
+      if (code === 0) {
+        wsClient.send(JSON.stringify({
+          type: 'complete',
+          message: 'Script execution completed successfully'
+        }));
+      } else {
+        wsClient.send(JSON.stringify({
+          type: 'error',
+          message: `Script execution failed with code ${code}`
+        }));
+      }
+      wsClient.close();
+    });
+
+  } catch (error) {
+    console.error('Script execution error:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to execute script'
+    });
+  }
+}));
+
 server.listen(port, () => {
   console.log(`Firebase Manager API running on port ${port}`);
-}); 
+});
