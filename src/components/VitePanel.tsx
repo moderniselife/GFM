@@ -26,7 +26,7 @@ export function VitePanel() {
   const fetchViteServers = async () => {
     try {
       setLoadingServers(true);
-      const response = await fetch('http://localhost:3001/api/scripts/vite-servers');
+      const response = await fetch(`http://localhost:3001/api/scripts/vite-servers?dir=${encodeURIComponent(projectDir)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch Vite servers');
       }

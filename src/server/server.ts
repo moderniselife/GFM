@@ -2394,6 +2394,11 @@ app.post(
 // Add endpoints for script management
 app.get('/api/scripts/vite-servers', errorHandler(async (req, res) => {
   try {
+    const { dir: projectDir } = req.query;
+    if (!projectDir) {
+      throw new Error('Project directory is required');
+    }
+
     const findViteServers = (dir: string): { path: string; scripts: { [key: string]: string } }[] => {
       const results: { path: string; scripts: { [key: string]: string } }[] = [];
       
@@ -2433,7 +2438,7 @@ app.get('/api/scripts/vite-servers', errorHandler(async (req, res) => {
       return results;
     };
 
-    const viteServers = findViteServers(process.cwd());
+    const viteServers = findViteServers(projectDir as string);
     res.json({ servers: viteServers });
   } catch (error) {
     console.error('Error finding Vite servers:', error);
