@@ -39,4 +39,4 @@ export const useLayout = () => {
     throw new Error('useLayout must be used within a LayoutProvider');
   }
   return context;
-}; 
+};

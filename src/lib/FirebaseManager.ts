@@ -14,7 +14,10 @@ class FirebaseManager {
   private addLog?: (message: string, type: 'info' | 'error' | 'success') => void;
   public currentProjectId?: string;
 
-  constructor(projectDir: string, addLog?: (message: string, type: 'info' | 'error' | 'success') => void) {
+  constructor(
+    projectDir: string,
+    addLog?: (message: string, type: 'info' | 'error' | 'success') => void
+  ) {
     this.baseUrl = 'http://localhost:3001/api';
     this.projectDir = projectDir;
     this.addLog = addLog;
@@ -26,7 +29,9 @@ class FirebaseManager {
 
   public async getFirebaseConfig(): Promise<any> {
     try {
-      const response = await fetch(`${this.baseUrl}/firebase/config?dir=${encodeURIComponent(this.projectDir)}`);
+      const response = await fetch(
+        `${this.baseUrl}/firebase/config?dir=${encodeURIComponent(this.projectDir)}`
+      );
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to read firebase configuration');
@@ -42,7 +47,9 @@ class FirebaseManager {
   public async getCurrentProject(): Promise<string> {
     this.log('Fetching current project...');
     try {
-      const response = await fetch(`${this.baseUrl}/firebase/current-project?dir=${this.projectDir}`);
+      const response = await fetch(
+        `${this.baseUrl}/firebase/current-project?dir=${this.projectDir}`
+      );
       if (!response.ok) throw new Error('Failed to get current project');
       const data = await response.json();
       this.currentProjectId = data.project;
@@ -56,13 +63,16 @@ class FirebaseManager {
 
   public async switchProject(projectId: string): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/firebase/switch-project?dir=${this.projectDir}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ projectId }),
-      });
+      const response = await fetch(
+        `${this.baseUrl}/firebase/switch-project?dir=${this.projectDir}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ projectId }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -98,7 +108,7 @@ class FirebaseManager {
       const clientId = Math.random().toString(36).substring(7);
 
       // Set up WebSocket message handler
-      ws.onmessage = (event) => {
+      ws.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
           switch (data.type) {
@@ -120,18 +130,21 @@ class FirebaseManager {
       };
 
       // Wait for WebSocket connection
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         ws.onopen = () => {
           ws.send(JSON.stringify({ type: 'register', clientId }));
           resolve();
         };
       });
 
-      const response = await fetch(`${this.baseUrl}/firebase/install-dependencies?dir=${encodeURIComponent(this.projectDir)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, projectId: this.currentProjectId })
-      });
+      const response = await fetch(
+        `${this.baseUrl}/firebase/install-dependencies?dir=${encodeURIComponent(this.projectDir)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, projectId: this.currentProjectId }),
+        }
+      );
 
       if (!response.ok) {
         ws.close();
@@ -151,7 +164,6 @@ class FirebaseManager {
           resolve();
         };
       });
-
     } catch (error) {
       ws?.close();
       this.log(`Failed to install dependencies: ${error}`, 'error');
@@ -277,8 +289,7 @@ class FirebaseManager {
         });
       }
 
-
-      ws.onmessage = (event) => {
+      ws.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
           switch (data.type) {
@@ -299,26 +310,29 @@ class FirebaseManager {
         }
       };
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         ws.onopen = () => {
           ws.send(JSON.stringify({ type: 'register', clientId }));
           resolve();
         };
       });
 
-      const response = await fetch(`${this.baseUrl}/firebase/deploy?dir=${encodeURIComponent(this.projectDir)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          options,
-          projectId: this.currentProjectId,
-          clientId,
-          targets
-        }),
-        signal,
-      });
+      const response = await fetch(
+        `${this.baseUrl}/firebase/deploy?dir=${encodeURIComponent(this.projectDir)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            options,
+            projectId: this.currentProjectId,
+            clientId,
+            targets,
+          }),
+          signal,
+        }
+      );
 
       if (!response.ok) {
         ws.close();
@@ -337,7 +351,6 @@ class FirebaseManager {
           resolve();
         };
       });
-
     } catch (error) {
       ws?.close();
       this.log(`Deployment failed: ${error}`, 'error');
@@ -345,7 +358,10 @@ class FirebaseManager {
     }
   }
 
-  public async manageEmulators(action: 'start' | 'stop' | 'restart', services?: string[]): Promise<void> {
+  public async manageEmulators(
+    action: 'start' | 'stop' | 'restart',
+    services?: string[]
+  ): Promise<void> {
     if (!this.currentProjectId) {
       this.currentProjectId = await this.getCurrentProject();
       if (!this.currentProjectId) {
@@ -356,7 +372,12 @@ class FirebaseManager {
     const response = await fetch(`${this.baseUrl}/firebase/emulators`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, services, dir: this.projectDir, projectId: this.currentProjectId })
+      body: JSON.stringify({
+        action,
+        services,
+        dir: this.projectDir,
+        projectId: this.currentProjectId,
+      }),
     });
 
     if (!response.ok) throw new Error(`Failed to ${action} emulators`);
@@ -402,7 +423,7 @@ class FirebaseManager {
         body: JSON.stringify({
           projectDir: this.projectDir,
           environment,
-          projectId: this.currentProjectId
+          projectId: this.currentProjectId,
         }),
       });
 
@@ -448,9 +469,9 @@ class FirebaseManager {
         body: JSON.stringify({
           projectId: this.currentProjectId,
           secretKey,
-          secretValue
+          secretValue,
         }),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);

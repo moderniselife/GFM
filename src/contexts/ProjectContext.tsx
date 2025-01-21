@@ -25,14 +25,16 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ProjectContext.Provider value={{ 
-      projectDir, 
-      setProjectDir, 
-      syncTrigger, 
-      triggerSync,
-      serviceKeyAdded,
-      triggerServiceKeyRefresh
-    }}>
+    <ProjectContext.Provider
+      value={{
+        projectDir,
+        setProjectDir,
+        syncTrigger,
+        triggerSync,
+        serviceKeyAdded,
+        triggerServiceKeyRefresh,
+      }}
+    >
       {children}
     </ProjectContext.Provider>
   );
@@ -44,4 +46,4 @@ export const useProject = () => {
     throw new Error('useProject must be used within a ProjectProvider');
   }
   return context;
-}; 
+};
