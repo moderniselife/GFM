@@ -31,6 +31,7 @@ import { StoragePanel } from './components/StoragePanel';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { GoogleAuthStatusPanel } from './components/GoogleAuthStatusPanel';
 import { AdvancedDeploymentPanel } from './components/AdvancedDeploymentPanel';
+import { VitePanel } from './components/VitePanel';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -219,6 +220,9 @@ export default function App() {
             </div>
             <div key="settingsPanel">
               <SettingsPanel />
+            </div>
+            <div key="vitePanel">
+              <VitePanel />
             </div>
           </ResponsiveGridLayout>
         </Box>

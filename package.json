@@ -109,6 +109,8 @@
     "vite": "^5.1.0"
   },
   "trustedDependencies": [
-    "protobufjs"
+    "esbuild",
+    "protobufjs",
+    "sharp"
   ]
 }

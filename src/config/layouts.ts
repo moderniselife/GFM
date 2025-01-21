@@ -3,6 +3,15 @@ import { Layout } from 'react-grid-layout';
 export const DEFAULT_LAYOUT: Layout[] = [
   {
     w: 3,
+    h: 4,
+    x: 9,
+    y: 4,
+    i: "vitePanel",
+    moved: false,
+    static: false
+  },
+  {
+    w: 3,
     h: 5,
     x: 0,
     y: 0,
@@ -147,6 +156,15 @@ export const MD_LAYOUT = DEFAULT_LAYOUT.map(item => ({
 
 // Small screen layout with specific dimensions for each panel
 export const SM_LAYOUT: Layout[] = [
+  {
+    w: 6,
+    h: 4,
+    x: 0,
+    y: 0,
+    i: "vitePanel",
+    moved: false,
+    static: false
+  },
   {
     w: 6,
     h: 5,
